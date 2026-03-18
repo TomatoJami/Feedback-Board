@@ -361,7 +361,7 @@
             }
         },
         "authToken": {
-            "duration": 604800
+            "duration": 86400
         },
         "passwordResetToken": {
             "duration": 1800
@@ -792,8 +792,8 @@
         "listRule": "is_public = true || @request.auth.id != ''",
         "viewRule": "is_public = true || @request.auth.id != ''",
         "createRule": "@request.auth.id != ''",
-        "updateRule": "@request.auth.id != ''",
-        "deleteRule": "@request.auth.role = 'admin'",
+        "updateRule": "author = @request.auth.id || @request.auth.role = 'admin'",
+        "deleteRule": "(@request.auth.role = 'admin') || (author = @request.auth.id && status = 'Open')",
         "fields": [
             {
                 "id": "text3208210256",
@@ -925,7 +925,7 @@
         "system": false,
         "listRule": "@request.auth.id != ''",
         "viewRule": "@request.auth.id != ''",
-        "createRule": "@request.auth.id != '' && user = @request.auth.id",
+        "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != suggestion.author",
         "updateRule": null,
         "deleteRule": "@request.auth.id != '' && user = @request.auth.id",
         "fields": [
@@ -1010,7 +1010,7 @@
         "listRule": "id != ''",
         "viewRule": "id != ''",
         "createRule": "@request.auth.id != '' && user = @request.auth.id",
-        "updateRule": "@request.auth.id != ''",
+        "updateRule": "user = @request.auth.id || @request.auth.role = 'admin'",
         "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
         "fields": [
             {
@@ -1130,7 +1130,7 @@
         "system": false,
         "listRule": "id != ''",
         "viewRule": "id != ''",
-        "createRule": "@request.auth.id != '' && user = @request.auth.id",
+        "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != comment.user",
         "updateRule": "@request.auth.id != '' && user = @request.auth.id",
         "deleteRule": "@request.auth.id != '' && user = @request.auth.id",
         "fields": [
@@ -1217,7 +1217,7 @@
         "system": false,
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
-        "createRule": "@request.auth.id != ''",
+        "createRule": "@request.auth.id != '' && user != @request.auth.id",
         "updateRule": "user = @request.auth.id",
         "deleteRule": "user = @request.auth.id",
         "fields": [

@@ -1207,3 +1207,9 @@ h1, h2, h3, h4 {
   color: inherit;
   display: block;
 }
+
+/* ── Toast Container (aligned under user avatar, stacks downward) ── */
+div.toast-container {
+  top: 70px !important;
+  right: max(24px, calc((100vw - 1200px) / 2 + 24px)) !important;
+}

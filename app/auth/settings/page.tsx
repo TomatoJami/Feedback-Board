@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, FormEvent } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
@@ -98,6 +99,7 @@ export default function SettingsPage() {
         await pb.collection('users').authRefresh();
         
         setSuccess('Настройки обновлены!');
+        toast.success('Профиль успешно обновлен!');
         setOldPassword('');
         setNewPassword('');
         setNewPasswordConfirm('');
@@ -107,6 +109,7 @@ export default function SettingsPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Ошибка при обновлении';
       setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

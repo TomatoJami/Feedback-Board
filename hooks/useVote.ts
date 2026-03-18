@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import pb from '@/lib/pocketbase';
+import toast from 'react-hot-toast';
 import { useAuth } from './useAuth';
 import type { Vote, VoteType } from '@/types';
 
@@ -26,7 +27,7 @@ interface UseVoteReturn {
   remainingSeconds: number;
   isLoading: boolean;
   cooldownActive: boolean;
-  vote: (type: VoteType) => Promise<void>;
+  vote: (type: VoteType, authorId?: string) => Promise<void>;
   revokeVote: () => Promise<void>;
 }
 
@@ -106,8 +107,14 @@ export function useVote(suggestionId: string): UseVoteReturn {
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
-  const vote = useCallback(async (type: VoteType) => {
+  const vote = useCallback(async (type: VoteType, authorId?: string) => {
     if (!user || isLoading || cooldownActive) return;
+
+    if (authorId && user.id === authorId) {
+      const toast = (await import('react-hot-toast')).default;
+      toast.error('Вы не можете голосовать за свое предложение');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -120,12 +127,9 @@ export function useVote(suggestionId: string): UseVoteReturn {
       // If voted opposite type, remove old vote first
       if (voteId) {
         await pb.collection('votes').delete(voteId);
-        // Adjust score
-        const sugg = await pb.collection('suggestions').getOne(suggestionId, { requestKey: null });
-        const oldDelta = voteType === 'upvote' ? -1 : 1;
-        await pb.collection('suggestions').update(suggestionId, {
-          votes_count: (sugg.votes_count ?? 0) + oldDelta,
-        });
+        // Atomically adjust score for removed vote
+        const oldAdjust = voteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
+        await pb.collection('suggestions').update(suggestionId, oldAdjust);
       }
 
       // Create new vote
@@ -135,12 +139,9 @@ export function useVote(suggestionId: string): UseVoteReturn {
         type,
       });
 
-      // Update score
-      const sugg = await pb.collection('suggestions').getOne(suggestionId, { requestKey: null });
-      const delta = type === 'upvote' ? 1 : -1;
-      await pb.collection('suggestions').update(suggestionId, {
-        votes_count: (sugg.votes_count ?? 0) + delta,
-      });
+      // Atomically update score
+      const newAdjust = type === 'upvote' ? { 'votes_count+': 1 } : { 'votes_count-': 1 };
+      await pb.collection('suggestions').update(suggestionId, newAdjust);
 
       setVoteType(type);
       setVoteId(newVote.id);
@@ -148,8 +149,9 @@ export function useVote(suggestionId: string): UseVoteReturn {
       setCooldownActive(true);
       setTimeout(() => setCooldownActive(false), VOTE_COOLDOWN_MS);
       startRevocationTimer();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Vote failed:', err);
+      toast.error(err.message || 'Ошибка при голосовании');
     } finally {
       setIsLoading(false);
     }
@@ -161,16 +163,15 @@ export function useVote(suggestionId: string): UseVoteReturn {
     setIsLoading(true);
     try {
       await pb.collection('votes').delete(voteId);
-      const sugg = await pb.collection('suggestions').getOne(suggestionId, { requestKey: null });
-      const delta = voteType === 'upvote' ? -1 : 1;
-      await pb.collection('suggestions').update(suggestionId, {
-        votes_count: Math.max(0, (sugg.votes_count ?? 0) + delta),
-      });
+      // Atomically adjust score for revoked vote
+      const revokeAdjust = voteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
+      await pb.collection('suggestions').update(suggestionId, revokeAdjust);
       setVoteType(null);
       setVoteId(null);
       clearTimers();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Revoke failed:', err);
+      toast.error(err.message || 'Ошибка при отмене голоса');
     } finally {
       setIsLoading(false);
     }

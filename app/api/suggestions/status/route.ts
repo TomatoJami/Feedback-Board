@@ -41,7 +41,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(suggestion);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Status update failed:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

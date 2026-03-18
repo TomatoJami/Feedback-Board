@@ -39,9 +39,10 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
       <div className="vote-column" onClick={(e) => e.preventDefault()}>
         <button
           className={`vote-btn ${voteType === 'upvote' ? 'voted' : ''}`}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); vote('upvote'); }}
-          disabled={!user || isLoading}
-          title={!user ? 'Войдите, чтобы голосовать' : 'Upvote'}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); vote('upvote', suggestion.author); }}
+          disabled={!user || isLoading || user.id === suggestion.author}
+          title={!user ? 'Войдите, чтобы голосовать' : user.id === suggestion.author ? 'Вы не можете голосовать за свое предложение' : 'Upvote'}
+          style={user?.id === suggestion.author ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
         >
           <svg className="vote-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 19V5M5 12l7-7 7 7" />
@@ -52,9 +53,10 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
 
         <button
           className={`vote-btn-down ${voteType === 'downvote' ? 'voted' : ''}`}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); vote('downvote'); }}
-          disabled={!user || isLoading}
-          title={!user ? 'Войдите, чтобы голосовать' : 'Downvote'}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); vote('downvote', suggestion.author); }}
+          disabled={!user || isLoading || user.id === suggestion.author}
+          title={!user ? 'Войдите, чтобы голосовать' : user.id === suggestion.author ? 'Вы не можете голосовать за свое предложение' : 'Downvote'}
+          style={user?.id === suggestion.author ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
         >
           <svg className="vote-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14M5 12l7 7 7-7" />

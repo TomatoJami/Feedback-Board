@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
@@ -63,10 +64,11 @@ export default function NewSuggestionPage() {
       }
 
       await pb.collection('suggestions').create(formData);
+      toast.success('Предложение успешно опубликовано!');
       router.push('/');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create suggestion:', err);
-      alert('Ошибка при создании предложения');
+      toast.error(err.message || 'Ошибка при создании предложения');
     } finally {
       setIsSubmitting(false);
     }

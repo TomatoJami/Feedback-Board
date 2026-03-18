@@ -3,11 +3,13 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DOMPurify from 'dompurify';
 import pb from '@/lib/pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { useVote } from '@/hooks/useVote';
 import { useComments } from '@/hooks/useComments';
+import toast from 'react-hot-toast';
 import type { Suggestion, SuggestionComment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -46,6 +48,11 @@ export default function SuggestionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
+  
+  // Deletion logic
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -80,10 +87,29 @@ export default function SuggestionDetailPage() {
       }
 
       setCommentText('');
-    } catch (err) {
+      toast.success('Комментарий добавлен!');
+    } catch (err: any) {
       console.error('Comment failed:', err);
+      toast.error(err.message || 'Ошибка при добавлении комментария');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!suggestion || deleteInput !== suggestion.title || isDeleting) return;
+    
+    setIsDeleting(true);
+    try {
+      await pb.collection('suggestions').delete(id);
+      toast.success('Предложение удалено');
+      router.push('/');
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      toast.error(err.message || 'Ошибка при удалении');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -167,7 +193,7 @@ export default function SuggestionDetailPage() {
         {suggestion.description && (
           <div
             className="detail-description"
-            dangerouslySetInnerHTML={{ __html: suggestion.description }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(suggestion.description) }}
           />
         )}
 
@@ -183,8 +209,10 @@ export default function SuggestionDetailPage() {
           <div className="vote-column" style={{ flexDirection: 'row', gap: '8px' }}>
             <button
               className={`vote-btn ${voteType === 'upvote' ? 'voted' : ''}`}
-              onClick={() => vote('upvote')}
-              disabled={!user || voteLoading}
+              onClick={() => vote('upvote', suggestion.author)}
+              disabled={!user || voteLoading || user.id === suggestion.author}
+              title={user?.id === suggestion.author ? 'Вы не можете голосовать за свое предложение' : 'Upvote'}
+              style={user?.id === suggestion.author ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               <svg className="vote-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5M5 12l7-7 7 7" />
@@ -195,8 +223,10 @@ export default function SuggestionDetailPage() {
 
             <button
               className={`vote-btn-down ${voteType === 'downvote' ? 'voted' : ''}`}
-              onClick={() => vote('downvote')}
-              disabled={!user || voteLoading}
+              onClick={() => vote('downvote', suggestion.author)}
+              disabled={!user || voteLoading || user.id === suggestion.author}
+              title={user?.id === suggestion.author ? 'Вы не можете голосовать за свое предложение' : 'Downvote'}
+              style={user?.id === suggestion.author ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               <svg className="vote-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14M5 12l7 7 7-7" />
@@ -213,6 +243,19 @@ export default function SuggestionDetailPage() {
               </button>
             )}
           </div>
+
+          {(user?.id === suggestion.author && suggestion.status === 'Open') && (
+            <button 
+              className="detail-delete-btn"
+              onClick={() => setShowDeleteModal(true)}
+              style={{ marginLeft: 'auto', color: '#f43f5e', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+              </svg>
+              Удалить
+            </button>
+          )}
         </div>
       </div>
 
@@ -264,6 +307,44 @@ export default function SuggestionDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-white mb-2">Удалить предложение?</h3>
+            <p className="text-zinc-400 mb-6 leading-relaxed">
+              Это действие необратимо. Пожалуйста, введите название предложения для подтверждения: <br/>
+              <strong className="text-zinc-200 select-all">{suggestion.title}</strong>
+            </p>
+            
+            <input
+              type="text"
+              className="w-full bg-black border border-white/10 rounded-xl p-4 mb-6 outline-none focus:border-red-500 transition-all text-white placeholder:text-zinc-700"
+              placeholder="Введите название..."
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              autoFocus
+            />
+
+            <div className="flex gap-4">
+              <button
+                className="flex-1 py-3 px-4 rounded-xl bg-white/5 text-zinc-400 font-semibold hover:bg-white/10 transition-all"
+                onClick={() => { setShowDeleteModal(false); setDeleteInput(''); }}
+              >
+                Отмена
+              </button>
+              <button
+                className="flex-1 py-3 px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={deleteInput !== suggestion.title || isDeleting}
+                onClick={handleDelete}
+              >
+                {isDeleting ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -307,6 +388,16 @@ function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, 
     }
   };
 
+  const handleCommentVote = async (type: 'upvote' | 'downvote') => {
+    if (!user) return;
+    if (user.id === comment.user) {
+      const toast = (await import('react-hot-toast')).default;
+      toast.error('Вы не можете голосовать за свой комментарий');
+      return;
+    }
+    await onVote(comment.id, type);
+  };
+
   return (
     <div className={`comment-group ${comment.parent_id ? 'is-reply' : ''}`}>
       <div className={`comment-card ${isAuthor ? 'is-author' : ''} ${isAdmin ? 'is-admin' : ''}`}>
@@ -346,9 +437,10 @@ function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, 
           <div className="comment-votes">
             <button 
               className={`c-vote-btn ${currentVote === 'upvote' ? 'voted-up' : ''}`}
-              onClick={() => onVote(comment.id, 'upvote')}
-              disabled={!user}
-              title="Нравится"
+              onClick={() => handleCommentVote('upvote')}
+              disabled={!user || user.id === comment.user}
+              title={user?.id === comment.user ? 'Вы не можете голосовать за свой комментарий' : 'Нравится'}
+              style={user?.id === comment.user ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5M5 12l7-7 7 7" />
@@ -359,9 +451,10 @@ function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, 
             </span>
             <button 
               className={`c-vote-btn ${currentVote === 'downvote' ? 'voted-down' : ''}`}
-              onClick={() => onVote(comment.id, 'downvote')}
-              disabled={!user}
-              title="Не нравится"
+              onClick={() => handleCommentVote('downvote')}
+              disabled={!user || user.id === comment.user}
+              title={user?.id === comment.user ? 'Вы не можете голосовать за свой комментарий' : 'Не нравится'}
+              style={user?.id === comment.user ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14M5 12l7 7 7-7" />
