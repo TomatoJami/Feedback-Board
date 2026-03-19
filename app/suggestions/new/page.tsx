@@ -91,7 +91,7 @@ export default function NewSuggestionPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!description.trim()) {
       setShowConfirm(true);
@@ -126,7 +126,7 @@ export default function NewSuggestionPage() {
             type="text"
             required
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
             className="w-full transition-all outline-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
             style={{
               background: 'var(--bg-tertiary)',
@@ -174,7 +174,7 @@ export default function NewSuggestionPage() {
           <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание (опционально)</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
             className="w-full transition-all outline-none resize-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
             style={{
               background: 'var(--bg-tertiary)',

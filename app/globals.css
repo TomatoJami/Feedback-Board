@@ -1270,3 +1270,28 @@ div.toast-container {
   right: max(24px, calc((100vw - 1100px) / 2 + 24px)) !important;
 }
 
+
+/* ── Deletion Animation ── */
+.detail-delete-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.detail-delete-btn:hover {
+  transform: scale(1.05);
+  background: rgba(244, 63, 94, 0.2) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+.trash-icon {
+  overflow: visible;
+}
+
+.trash-lid {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: 3px 6px;
+}
+
+.detail-delete-btn:hover .trash-lid {
+  transform: rotate(-20deg) translateY(-1px);
+}
