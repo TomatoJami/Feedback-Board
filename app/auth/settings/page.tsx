@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, FormEvent } from 'react';
+import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -65,7 +65,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -207,7 +207,7 @@ export default function SettingsPage() {
               className="auth-input"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               placeholder="Ваше имя"
             />
           </div>
@@ -219,7 +219,7 @@ export default function SettingsPage() {
               className="auth-input"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               placeholder="you@example.com"
             />
           </div>

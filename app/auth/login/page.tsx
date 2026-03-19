@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -21,7 +21,7 @@ export default function LoginPage() {
     }
   }, [user, isLoading, router]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
@@ -75,7 +75,7 @@ export default function LoginPage() {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
               autoComplete="email"
             />
