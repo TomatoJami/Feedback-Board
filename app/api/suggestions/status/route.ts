@@ -1,10 +1,24 @@
 import { NextResponse } from 'next/server';
 import PocketBase from 'pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
+import { z } from 'zod';
+
+const statusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(['Open', 'Planned', 'In_Progress', 'Completed']),
+  message: z.string().optional(),
+});
 
 export async function POST(request: Request) {
   try {
-    const { id, status, message } = await request.json();
+    const jsonBody = await request.json();
+    const parsed = statusSchema.safeParse(jsonBody);
+    
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid payload', details: parsed.error.issues }, { status: 400 });
+    }
+    
+    const { id, status, message } = parsed.data;
     const authToken = request.headers.get('Authorization');
 
     if (!authToken) {

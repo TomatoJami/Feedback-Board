@@ -3,7 +3,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import DOMPurify from 'dompurify';
+import DOMPurify from 'isomorphic-dompurify';
 import pb from '@/lib/pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
@@ -90,7 +90,7 @@ export default function SuggestionDetailPage() {
       toast.success('Комментарий добавлен!');
     } catch (err: any) {
       console.error('Comment failed:', err);
-      toast.error(err.message || 'Ошибка при добавлении комментария');
+      toast.error('Ошибка при добавлении комментария');
     } finally {
       setSending(false);
     }
@@ -106,7 +106,7 @@ export default function SuggestionDetailPage() {
       router.push('/');
     } catch (err: any) {
       console.error('Delete failed:', err);
-      toast.error(err.message || 'Ошибка при удалении');
+      toast.error('Ошибка при удалении');
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

@@ -68,7 +68,7 @@ export default function NewSuggestionPage() {
       router.push('/');
     } catch (err: any) {
       console.error('Failed to create suggestion:', err);
-      toast.error(err.message || 'Ошибка при создании предложения');
+      toast.error('Ошибка при создании предложения');
     } finally {
       setIsSubmitting(false);
     }

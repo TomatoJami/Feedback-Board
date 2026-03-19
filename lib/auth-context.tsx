@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('С возвращением!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка входа');
+      toast.error('Ошибка входа');
       throw err;
     }
   }, [syncCookie]);
@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('Регистрация успешна!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка регистрации');
+      toast.error('Ошибка регистрации');
       throw err;
     }
   }, [syncCookie]);

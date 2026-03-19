@@ -151,7 +151,7 @@ export function useVote(suggestionId: string): UseVoteReturn {
       startRevocationTimer();
     } catch (err: any) {
       console.error('Vote failed:', err);
-      toast.error(err.message || 'Ошибка при голосовании');
+      toast.error('Ошибка при голосовании');
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +171,7 @@ export function useVote(suggestionId: string): UseVoteReturn {
       clearTimers();
     } catch (err: any) {
       console.error('Revoke failed:', err);
-      toast.error(err.message || 'Ошибка при отмене голоса');
+      toast.error('Ошибка при отмене голоса');
     } finally {
       setIsLoading(false);
     }
