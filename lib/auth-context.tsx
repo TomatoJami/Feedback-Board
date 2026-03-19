@@ -50,7 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncCookie = useCallback(() => {
     if (typeof document !== 'undefined') {
-      document.cookie = pb.authStore.exportToCookie({ httpOnly: false, sameSite: 'Lax', path: '/' });
+      if (pb.authStore.isValid && pb.authStore.token && pb.authStore.record) {
+        // Build a minimal cookie that fits within the 4KB browser limit.
+        // exportToCookie() includes the entire user record and easily exceeds 4KB.
+        const minimalData = JSON.stringify({
+          token: pb.authStore.token,
+          record: {
+            id: pb.authStore.record.id,
+            collectionId: pb.authStore.record.collectionId,
+            role: (pb.authStore.record as unknown as Record<string, string>).role ?? 'user',
+          },
+        });
+        document.cookie = `pb_auth=${encodeURIComponent(minimalData)}; path=/; SameSite=Lax; max-age=2592000`;
+      } else {
+        // Clear cookie when not authenticated
+        document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      }
     }
   }, []);
 
@@ -141,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     pb.authStore.clear();
     setUser(null);
     if (typeof document !== 'undefined') {
-      document.cookie = 'pb_auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
     toast.success('Вы вышли из системы');
     router.push('/');
