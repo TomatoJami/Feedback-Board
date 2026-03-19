@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
+import { logger } from '@/lib/logger';
 import type { Category } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
 
@@ -17,7 +18,7 @@ export function useCategories() {
       });
       setCategories(records);
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
+      logger.error('Failed to fetch categories:', err);
     } finally {
       setIsLoading(false);
     }

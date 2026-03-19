@@ -2,10 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
+import { Settings } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 
 export default function NewSuggestionPage() {
@@ -20,14 +22,28 @@ export default function NewSuggestionPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Set default category when loaded
+  // Fetch categories and settings when loaded
   useEffect(() => {
     if (categories.length > 0 && !categoryId) {
       setCategoryId(categories[0].id);
     }
+    
+    const fetchSettings = async () => {
+      try {
+        const records = await pb.collection('settings').getFullList<Settings>({ 
+          limit: 1,
+          requestKey: null
+        });
+        if (records.length > 0) setSettings(records[0]);
+      } catch (err) {
+        logger.error('Failed to fetch settings:', err);
+      }
+    };
+    fetchSettings();
   }, [categories, categoryId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +72,8 @@ export default function NewSuggestionPage() {
       formData.append('description', description);
       formData.append('category_id', categoryId);
       formData.append('author', user.id);
-      formData.append('status', 'Open');
+      formData.append('status', '');
+      formData.append('status_id', settings?.default_status || '');
       formData.append('votes_count', '0');
       formData.append('is_public', 'true');
       if (image) {
@@ -67,14 +84,14 @@ export default function NewSuggestionPage() {
       toast.success('Предложение успешно опубликовано!');
       router.push('/');
     } catch (err: any) {
-      console.error('Failed to create suggestion:', err);
-      toast.error(err.message || 'Ошибка при создании предложения');
+      logger.error('Failed to create suggestion:', err);
+      toast.error('Ошибка при создании предложения');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!description.trim()) {
       setShowConfirm(true);
@@ -90,80 +107,120 @@ export default function NewSuggestionPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Новое предложение</h1>
-        <p className="text-zinc-400">Опишите вашу идею или сообщите об ошибке.</p>
-      </div>
+    <div className="w-full flex justify-center py-6 sm:py-12">
+      <div className="w-full max-w-2xl flex flex-col items-center">
+        <div className="mb-8 text-center w-full">
+          <h1 className="text-3xl font-bold mb-2">Новое предложение</h1>
+          <p className="text-zinc-400">Опишите вашу идею или сообщите об ошибке.</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 bg-zinc-900/50 p-8 rounded-3xl border border-white/5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full" style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '36px'
+      }}>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Заголовок</label>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Заголовок</label>
           <input
             type="text"
             required
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-zinc-950 border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-zinc-700"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+            className="w-full transition-all outline-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
+            style={{
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 16px',
+              color: 'var(--text-primary)'
+            }}
             placeholder="Краткое название идеи..."
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Категория</label>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Категория</label>
           <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`py-3 px-4 rounded-xl border font-semibold transition-all min-w-[100px] flex items-center justify-center gap-2 ${
-                  categoryId === c.id 
-                  ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400' 
-                  : 'bg-zinc-950 border-white/10 text-zinc-500 hover:border-white/20'
-                }`}
-                onClick={() => setCategoryId(c.id)}
-              >
-                {c.icon && <span>{c.icon}</span>}
-                {c.name}
-              </button>
-            ))}
+            {categories.map((c) => {
+              const isActive = categoryId === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="font-semibold transition-all min-w-[100px] flex items-center justify-center gap-2"
+                  style={{
+                    background: isActive ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-tertiary)',
+                    border: `1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                    borderRadius: '999px',
+                    color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    padding: '8px 16px',
+                    fontSize: '0.9rem'
+                  }}
+                  onClick={() => setCategoryId(c.id)}
+                >
+                  {c.icon && <span>{c.icon}</span>}
+                  {c.name}
+                </button>
+              );
+            })}
             {categories.length === 0 && (
-              <p className="text-zinc-600 text-sm">Нет доступных категорий. Обратитесь к админу.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Нет доступных категорий. Обратитесь к админу.</p>
             )}
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Описание (опционально)</label>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание (опционально)</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full bg-zinc-950 border border-white/10 rounded-xl p-4 min-h-[160px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-zinc-700 resize-none"
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+            className="w-full transition-all outline-none resize-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
+            style={{
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 16px',
+              color: 'var(--text-primary)',
+              minHeight: '160px'
+            }}
             placeholder="Расскажите подробнее..."
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Скриншот</label>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Скриншот</label>
           {!preview ? (
             <div 
-              className="border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-white/20 transition-all bg-zinc-950/50 group"
+              className="flex flex-col items-center justify-center cursor-pointer transition-all group"
+              style={{
+                border: '2px dashed var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '32px',
+                background: 'rgba(255, 255, 255, 0.02)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div 
+                className="rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
+                style={{ width: '48px', height: '48px', background: 'var(--bg-tertiary)' }}
+              >
+                <svg className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                 </svg>
               </div>
-              <p className="text-sm text-zinc-500 font-medium">Нажмите, чтобы загрузить скриншот</p>
-              <p className="text-xs text-zinc-600 mt-1">PNG, JPG, WEBP до 5MB</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Нажмите, чтобы загрузить скриншот</p>
+              <p style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '4px' }}>PNG, JPG, WEBP до 5MB</p>
             </div>
           ) : (
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-950">
+            <div className="relative overflow-hidden" style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}>
               <img src={preview} alt="Preview" className="w-full max-h-64 object-contain" />
               <button 
                 type="button"
-                className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
+                className="absolute top-4 right-4 p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
+                style={{ background: '#f43f5e', color: 'white' }}
                 onClick={removeImage}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -184,24 +241,26 @@ export default function NewSuggestionPage() {
         <button
           type="submit"
           disabled={isSubmitting || !title.trim() || !categoryId}
-          className="btn btn-primary w-full py-4 text-lg justify-center mt-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-indigo-500/20"
+          className="btn btn-primary w-full py-4 text-lg justify-center mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ padding: '14px', fontSize: '1rem', fontWeight: 600, boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.3)' }}
         >
           {isSubmitting ? 'Отправляем...' : 'Опубликовать'}
         </button>
       </form>
 
-      <ConfirmModal
-        isOpen={showConfirm}
-        title="Пустое описание"
-        message="Вы уверены, что хотите отправить предложение без подробного описания?"
-        confirmText="Да, отправить"
-        cancelText="Вернуться"
-        onConfirm={() => {
-          setShowConfirm(false);
-          submitForm();
-        }}
-        onCancel={() => setShowConfirm(false)}
-      />
+        <ConfirmModal
+          isOpen={showConfirm}
+          title="Пустое описание"
+          message="Вы уверены, что хотите отправить предложение без подробного описания?"
+          confirmText="Да, отправить"
+          cancelText="Вернуться"
+          onConfirm={() => {
+            setShowConfirm(false);
+            submitForm();
+          }}
+          onCancel={() => setShowConfirm(false)}
+        />
+      </div>
     </div>
   );
 }

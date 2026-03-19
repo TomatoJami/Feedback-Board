@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
+import { logger } from '@/lib/logger';
 import type { Notification } from '@/types';
 import { useAuth } from './useAuth';
 import type { RecordSubscription } from 'pocketbase';
@@ -22,7 +23,7 @@ export function useNotifications() {
       setNotifications(records);
       setUnreadCount(records.filter((n) => !n.read).length);
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      logger.error('Failed to fetch notifications:', err);
     }
   }, [user]);
 
@@ -34,7 +35,7 @@ export function useNotifications() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+      logger.error('Failed to mark notification as read:', err);
     }
   }, []);
 
@@ -47,7 +48,7 @@ export function useNotifications() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (err) {
-      console.error('Failed to mark all as read:', err);
+      logger.error('Failed to mark all as read:', err);
     }
   }, [notifications]);
 

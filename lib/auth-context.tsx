@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
+import { logger } from './logger';
 import type { User } from '@/types';
 import type { AuthRecord } from 'pocketbase';
 
@@ -50,7 +51,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncCookie = useCallback(() => {
     if (typeof document !== 'undefined') {
-      document.cookie = pb.authStore.exportToCookie({ httpOnly: false, sameSite: 'Lax', path: '/' });
+      if (pb.authStore.isValid && pb.authStore.token && pb.authStore.record) {
+        // Build a minimal cookie that fits within the 4KB browser limit.
+        // exportToCookie() includes the entire user record and easily exceeds 4KB.
+        const minimalData = JSON.stringify({
+          token: pb.authStore.token,
+          record: {
+            id: pb.authStore.record.id,
+            collectionId: pb.authStore.record.collectionId,
+            role: (pb.authStore.record as unknown as Record<string, string>).role ?? 'user',
+          },
+        });
+        document.cookie = `pb_auth=${encodeURIComponent(minimalData)}; path=/; SameSite=Lax; max-age=2592000`;
+      } else {
+        // Clear cookie when not authenticated
+        document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      }
     }
   }, []);
 
@@ -101,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('С возвращением!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка входа');
+      toast.error('Ошибка входа');
       throw err;
     }
   }, [syncCookie]);
@@ -114,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       syncCookie();
     } catch (err) {
-      console.error('OAuth2 login failed:', err);
+      logger.error('OAuth2 login failed:', err);
       throw err;
     }
   }, [syncCookie]);
@@ -131,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('Регистрация успешна!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка регистрации');
+      toast.error('Ошибка регистрации');
       throw err;
     }
   }, [syncCookie]);
@@ -141,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     pb.authStore.clear();
     setUser(null);
     if (typeof document !== 'undefined') {
-      document.cookie = 'pb_auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
     toast.success('Вы вышли из системы');
     router.push('/');

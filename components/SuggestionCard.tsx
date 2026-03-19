@@ -24,8 +24,11 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const { user } = useAuth();
   const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote } = useVote(suggestion.id);
 
-  const statusColor = STATUS_COLORS[suggestion.status] ?? '#6b7280';
-  const statusLabel = suggestion.status.replace('_', ' ');
+  const dynamicStatus = suggestion.expand?.status_id;
+  const isLegacyOpen = !suggestion.status || suggestion.status.toLowerCase() === 'open';
+  const statusColor = dynamicStatus?.color || (!isLegacyOpen ? STATUS_COLORS[suggestion.status] : null) || '#6b7280';
+  const statusLabel = dynamicStatus?.name || (!isLegacyOpen ? suggestion.status.replace('_', ' ') : 'Без статуса');
+  
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
 
@@ -85,7 +88,18 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
             <span className="category-badge">
               {categoryIcon} {categoryName}
             </span>
-            <span className="status-badge" style={{ '--status-color': statusColor } as React.CSSProperties}>
+            <span 
+              className="status-badge" 
+              style={{ 
+                '--status-color': statusColor,
+                display: 'inline-flex',
+                alignItems: 'center',
+                flexDirection: 'row',
+                gap: '8px',
+                whiteSpace: 'nowrap'
+              } as React.CSSProperties}
+            >
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-color)', flexShrink: 0 }} />
               {statusLabel}
             </span>
           </div>

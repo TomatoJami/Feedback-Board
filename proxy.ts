@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from './lib/logger';
 import type { NextRequest } from 'next/server';
 
 function parseJwtPayload(token: string): Record<string, unknown> | null {
@@ -14,7 +15,7 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const authCookie = request.cookies.get('pb_auth');
   const path = request.nextUrl.pathname;
   
@@ -28,33 +29,51 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Server-side admin role check: decode JWT and verify role
+  // Server-side admin role check: securely verify Token against PocketBase
   if (isAdminPage && authCookie) {
     try {
-      // Decode URL-encoded cookie value if necessary
+      // Decode URL-encoded cookie value
       const rawValue = authCookie.value.startsWith('%') 
         ? decodeURIComponent(authCookie.value) 
         : authCookie.value;
 
       const cookieData = JSON.parse(rawValue);
       const token = cookieData?.token;
-      const user = cookieData?.record ?? cookieData?.model;
       
-      if (token && user) {
-        // Check role from the model stored in the cookie
-        // Note: Client can spoof this to VIEW the page, but PocketBase rules 
-        // will still prevent them from DOING anything without a valid admin token.
-        if (user.role !== 'admin') {
-          console.log(`Middleware: Access denied for user ${user.id} with role ${user.role}`);
-          return NextResponse.redirect(new URL('/', request.url));
-        }
-        console.log(`Middleware: Access granted for admin ${user.id}`);
-      } else {
+      if (!token) {
         return NextResponse.redirect(new URL('/auth/login', request.url));
       }
+
+      // Securely verify token and get user profile directly from PocketBase
+      // We don't verify signature locally, we let PocketBase do it for 100% safety
+      const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+      
+      const response = await fetch(`${pbUrl}/api/collections/users/auth-refresh`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        // Don't cache this request, we need real-time validation for admin access
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        logger.warn(`Middleware: Token validation failed with status ${response.status}`);
+        return NextResponse.redirect(new URL('/auth/login', request.url));
+      }
+
+      const authData = await response.json();
+      const user = authData?.record;
+
+      if (user?.role !== 'admin') {
+        logger.warn(`Middleware: Access denied for verified user ${user?.id} with role ${user?.role}`);
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+
+      logger.info(`Middleware: Secure access granted for verified admin ${user.id}`);
     } catch (e) {
-      console.error('Middleware: Error parsing auth cookie', e);
-      // If cookie is malformed, better to ask for login
+      logger.error('Middleware: Error processing auth verification', e);
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
   }
