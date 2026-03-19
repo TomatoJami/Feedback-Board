@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from './lib/logger';
 import type { NextRequest } from 'next/server';
 
 function parseJwtPayload(token: string): Record<string, unknown> | null {
@@ -58,7 +59,7 @@ export async function proxy(request: NextRequest) {
       });
 
       if (!response.ok) {
-        console.warn(`Middleware: Token validation failed with status ${response.status}`);
+        logger.warn(`Middleware: Token validation failed with status ${response.status}`);
         return NextResponse.redirect(new URL('/auth/login', request.url));
       }
 
@@ -66,13 +67,13 @@ export async function proxy(request: NextRequest) {
       const user = authData?.record;
 
       if (user?.role !== 'admin') {
-        console.warn(`Middleware: Access denied for verified user ${user?.id} with role ${user?.role}`);
+        logger.warn(`Middleware: Access denied for verified user ${user?.id} with role ${user?.role}`);
         return NextResponse.redirect(new URL('/', request.url));
       }
 
-      console.log(`Middleware: Secure access granted for verified admin ${user.id}`);
+      logger.info(`Middleware: Secure access granted for verified admin ${user.id}`);
     } catch (e) {
-      console.error('Middleware: Error processing auth verification', e);
+      logger.error('Middleware: Error processing auth verification', e);
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
   }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import PocketBase from 'pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 const statusSchema = z.object({
   id: z.string().min(1),
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(suggestion);
   } catch (err: unknown) {
-    console.error('Status update failed:', err);
+    logger.error('Status update failed:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

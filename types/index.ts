@@ -6,6 +6,18 @@ export interface Category extends RecordModel {
   icon: string;
 }
 
+// ── Status ──────────────────────────────────────────────────
+export interface Status extends RecordModel {
+  name: string;
+  color: string;
+}
+
+// ── User Prefix ─────────────────────────────────────────────
+export interface UserPrefix extends RecordModel {
+  name: string;
+  color: string;
+}
+
 // ── Suggestion ──────────────────────────────────────────────
 export type SuggestionStatus = 'Open' | 'Planned' | 'In_Progress' | 'Completed';
 
@@ -18,9 +30,11 @@ export interface Suggestion extends RecordModel {
   author: string;
   is_public: boolean;
   votes_count: number;
+  status_id?: string;
   expand?: {
     author?: User;
     category_id?: Category;
+    status_id?: Status;
   };
 }
 
@@ -67,10 +81,20 @@ export interface Notification extends RecordModel {
   read: boolean;
 }
 
+// ── Settings ──────────────────────────────────────────────
+export interface Settings extends RecordModel {
+  default_status: string;
+  deletable_statuses: string[];
+}
+
 // ── User ─────────────────────────────────────────────────────
 export interface User extends RecordModel {
   email: string;
   name: string;
   avatar: string;
   role?: string;
+  prefixes?: string[];
+  expand?: {
+    prefixes?: UserPrefix[];
+  };
 }

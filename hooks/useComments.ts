@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
+import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
 
@@ -16,7 +17,7 @@ export function useComments(suggestionId: string) {
       const records = await pb.collection('comments').getFullList<SuggestionComment>({
         filter: `suggestion = "${suggestionId}"`,
         sort: 'created',
-        expand: 'user',
+        expand: 'user.prefixes',
         requestKey: null,
       });
       setComments(records);
@@ -34,7 +35,7 @@ export function useComments(suggestionId: string) {
         setUserVotes(voteMap);
       }
     } catch (err) {
-      console.error('Failed to fetch comments:', err);
+      logger.error('Failed to fetch comments:', err);
     } finally {
       setIsLoading(false);
     }
@@ -60,9 +61,8 @@ export function useComments(suggestionId: string) {
         }
       });
       
-      // If new comment, try to fetch expand info
       if (e.action === 'create') {
-        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user' }).then(full => {
+        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user.prefix' }).then(full => {
           setComments(prev => prev.map(c => c.id === full.id ? full : c));
         }).catch(() => {});
       }
@@ -81,9 +81,8 @@ export function useComments(suggestionId: string) {
       parent_id: parentId || null,
     });
     
-    // Manually fetch with expand for immediate UI update
     try {
-      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user' });
+      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user.prefix' });
       setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
       return full;
     } catch {
