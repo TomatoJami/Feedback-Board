@@ -1,6 +1,8 @@
 import PocketBase from 'pocketbase';
 
-const POCKETBASE_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+const POCKETBASE_URL = typeof window !== 'undefined'
+  ? '/pb'  // Client-side: proxy through Next.js to avoid CORS
+  : (process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090'); // Server-side: direct connection
 
 let pb: PocketBase;
 

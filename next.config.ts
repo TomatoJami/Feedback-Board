@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/pb/:path*',
+        destination: `${process.env.NEXT_PUBLIC_POCKETBASE_URL}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
