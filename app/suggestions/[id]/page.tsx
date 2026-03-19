@@ -3,14 +3,15 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import DOMPurify from 'dompurify';
+import DOMPurify from 'isomorphic-dompurify';
 import pb from '@/lib/pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { useVote } from '@/hooks/useVote';
 import { useComments } from '@/hooks/useComments';
 import toast from 'react-hot-toast';
-import type { Suggestion, SuggestionComment } from '@/types';
+import { logger } from '@/lib/logger';
+import type { Suggestion, SuggestionComment, Settings } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
   Open: '#3b82f6',
@@ -48,6 +49,7 @@ export default function SuggestionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
   
   // Deletion logic
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -57,12 +59,20 @@ export default function SuggestionDetailPage() {
   useEffect(() => {
     (async () => {
       try {
-        const record = await pb.collection('suggestions').getOne<Suggestion>(id, {
-          expand: 'author,category_id',
-          requestKey: null,
-        });
+        const [record, settingsRecords] = await Promise.all([
+          pb.collection('suggestions').getOne<Suggestion>(id, {
+            expand: 'author.prefixes,category_id,status_id',
+            requestKey: null,
+          }),
+          pb.collection('settings').getFullList<Settings>({ 
+            limit: 1,
+            requestKey: null
+          })
+        ]);
         setSuggestion(record);
-      } catch {
+        if (settingsRecords.length > 0) setSettings(settingsRecords[0]);
+      } catch (err) {
+        logger.error('Fetch error:', err);
         router.push('/');
       } finally {
         setLoading(false);
@@ -89,8 +99,8 @@ export default function SuggestionDetailPage() {
       setCommentText('');
       toast.success('Комментарий добавлен!');
     } catch (err: any) {
-      console.error('Comment failed:', err);
-      toast.error(err.message || 'Ошибка при добавлении комментария');
+      logger.error('Comment failed:', err);
+      toast.error('Ошибка при добавлении комментария');
     } finally {
       setSending(false);
     }
@@ -105,8 +115,8 @@ export default function SuggestionDetailPage() {
       toast.success('Предложение удалено');
       router.push('/');
     } catch (err: any) {
-      console.error('Delete failed:', err);
-      toast.error(err.message || 'Ошибка при удалении');
+      logger.error('Delete failed:', err);
+      toast.error('Ошибка при удалении');
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -115,7 +125,7 @@ export default function SuggestionDetailPage() {
 
   if (loading) {
     return (
-      <div className="detail-container">
+      <div className="detail-container w-full !max-w-full">
         <div className="h-10 w-32 bg-white/5 animate-pulse rounded-lg mb-6" />
         <div className="h-64 bg-white/5 animate-pulse rounded-2xl" />
       </div>
@@ -124,8 +134,11 @@ export default function SuggestionDetailPage() {
 
   if (!suggestion) return null;
 
-  const statusColor = STATUS_COLORS[suggestion.status] ?? '#6b7280';
-  const statusLabel = suggestion.status.replace('_', ' ');
+  const dynamicStatus = suggestion.expand?.status_id;
+  const isLegacyOpen = !suggestion.status || suggestion.status.toLowerCase() === 'open';
+  const statusColor = dynamicStatus?.color || (!isLegacyOpen ? STATUS_COLORS[suggestion.status] : null) || '#6b7280';
+  const statusLabel = dynamicStatus?.name || (!isLegacyOpen ? suggestion.status.replace('_', ' ') : 'Без статуса');
+  
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
   const authorName = suggestion.expand?.author?.name || 'Аноним';
@@ -140,7 +153,7 @@ export default function SuggestionDetailPage() {
     : null;
 
   return (
-    <div className="detail-container">
+    <div className="detail-container w-full !max-w-full">
       <Link href="/" className="detail-back">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -149,7 +162,32 @@ export default function SuggestionDetailPage() {
       </Link>
 
       <div className="detail-card">
-        {/* Author at top */}
+        {/* Title, Category, and Status at top */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <h1 className="detail-title" style={{ margin: 0, lineHeight: 1.2 }}>{suggestion.title}</h1>
+            <span className="category-badge">
+              {categoryIcon} {categoryName}
+            </span>
+          </div>
+          <span 
+            className="status-badge" 
+            style={{ 
+              '--status-color': statusColor, 
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              flexDirection: 'row',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            } as React.CSSProperties}
+          >
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-color)', flexShrink: 0 }} />
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Author details */}
         <div className="detail-author" style={{ marginBottom: '16px' }}>
           <div className="detail-author-avatar" style={{ 
             background: suggestion.expand?.author?.avatar ? 'transparent' : authorColor,
@@ -166,6 +204,22 @@ export default function SuggestionDetailPage() {
             ) : authorName.charAt(0).toUpperCase()}
           </div>
           <span className="detail-author-name">{authorName}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
+            {suggestion.expand?.author?.expand?.prefixes?.map((prefix, idx) => (
+              <span key={idx} style={{ 
+                color: prefix.color, 
+                fontSize: '0.65rem', 
+                fontWeight: 800, 
+                textTransform: 'uppercase',
+                background: `${prefix.color}15`,
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: `1px solid ${prefix.color}33`,
+              }}>
+                {prefix.name}
+              </span>
+            ))}
+          </div>
           {authorRole === 'admin' && (
             <span className="detail-author-badge badge-admin">Админ</span>
           )}
@@ -178,17 +232,6 @@ export default function SuggestionDetailPage() {
             })}
           </time>
         </div>
-
-        <div className="detail-meta">
-          <span className="category-badge">
-            {categoryIcon} {categoryName}
-          </span>
-          <span className="status-badge" style={{ '--status-color': statusColor } as React.CSSProperties}>
-            {statusLabel}
-          </span>
-        </div>
-
-        <h1 className="detail-title">{suggestion.title}</h1>
 
         {suggestion.description && (
           <div
@@ -244,18 +287,29 @@ export default function SuggestionDetailPage() {
             )}
           </div>
 
-          {(user?.id === suggestion.author && suggestion.status === 'Open') && (
-            <button 
-              className="detail-delete-btn"
-              onClick={() => setShowDeleteModal(true)}
-              style={{ marginLeft: 'auto', color: '#f43f5e', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
-              </svg>
-              Удалить
-            </button>
-          )}
+          {(() => {
+            const isAuthor = user?.id === suggestion.author;
+            const isAdmin = user?.role === 'admin';
+            const deletableArray = Array.isArray(settings?.deletable_statuses) ? settings.deletable_statuses : [];
+            const isDeletable = deletableArray.length === 0 || 
+                               (suggestion.status_id && deletableArray.includes(suggestion.status_id));
+            
+            if (isAdmin || (isAuthor && isDeletable)) {
+              return (
+                <button 
+                  className="detail-delete-btn"
+                  onClick={() => setShowDeleteModal(true)}
+                  style={{ marginLeft: 'auto', color: '#f43f5e', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                  </svg>
+                  Удалить
+                </button>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 
@@ -382,7 +436,7 @@ function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, 
       setReplyText('');
       setShowReply(false);
     } catch (err) {
-      console.error('Reply failed:', err);
+      logger.error('Reply failed:', err);
     } finally {
       setIsSending(false);
     }
@@ -418,6 +472,22 @@ function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, 
               ) : cName.charAt(0).toUpperCase()}
             </div>
             <span className="comment-name">{cName}</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
+              {cUser?.expand?.prefixes?.map((prefix, idx) => (
+                <span key={idx} style={{ 
+                  color: prefix.color, 
+                  fontSize: '0.6rem', 
+                  fontWeight: 800, 
+                  textTransform: 'uppercase',
+                  background: `${prefix.color}15`,
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  border: `1px solid ${prefix.color}33`,
+                }}>
+                  {prefix.name}
+                </span>
+              ))}
+            </div>
             {isAuthor && <span className="detail-author-badge badge-author">Автор</span>}
             {isAdmin && <span className="detail-author-badge badge-admin">Админ</span>}
           </div>

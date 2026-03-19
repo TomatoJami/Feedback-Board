@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
+import { logger } from './logger';
 import type { User } from '@/types';
 import type { AuthRecord } from 'pocketbase';
 
@@ -116,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('С возвращением!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка входа');
+      toast.error('Ошибка входа');
       throw err;
     }
   }, [syncCookie]);
@@ -129,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       syncCookie();
     } catch (err) {
-      console.error('OAuth2 login failed:', err);
+      logger.error('OAuth2 login failed:', err);
       throw err;
     }
   }, [syncCookie]);
@@ -146,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('Регистрация успешна!');
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка регистрации');
+      toast.error('Ошибка регистрации');
       throw err;
     }
   }, [syncCookie]);

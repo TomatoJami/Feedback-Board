@@ -3,16 +3,25 @@
 import React, { Suspense, useState, useMemo } from 'react';
 import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
 import { useCategories } from '@/hooks/useCategories';
+import { useStatuses } from '@/hooks/useStatuses';
 import { useAuth } from '@/hooks/useAuth';
 import SuggestionCard from '@/components/SuggestionCard';
 import type { SuggestionStatus } from '@/types';
 
 type CategoryFilter = 'All' | 'Mine' | string; // id of category
-type StatusFilter = 'All' | SuggestionStatus;
+type StatusFilter = 'All' | string; // id or standard value
+
+const STATUS_COLORS: Record<string, string> = {
+  Open: '#3b82f6',
+  Planned: '#a855f7',
+  In_Progress: '#f59e0b',
+  Completed: '#10b981',
+};
 
 function HomeContent() {
   const { suggestions, isLoading: suggestionsLoading } = useRealtimeSuggestions();
   const { categories, isLoading: categoriesLoading } = useCategories();
+  const { statuses, isLoading: statusesLoading } = useStatuses();
   const { user } = useAuth();
 
   const [categoryId, setCategoryId] = useState<CategoryFilter>('All');
@@ -23,13 +32,23 @@ function HomeContent() {
       const categoryMatch =
         categoryId === 'All' ||
         (categoryId === 'Mine' ? (user && s.author === user.id) : s.category_id === categoryId);
-      const statusMatch = status === 'All' || s.status === status;
+      
+      // Determine the effective status for filtering
+      // If a suggestion has a dynamic status_id, use that.
+      // Otherwise, if it has a legacy 'status' field, use that.
+      // If legacy 'status' is 'Open' or missing, treat it as 'None' (Без статуса).
+      const suggestionEffectiveStatus = s.status_id
+        ? s.status_id
+        : (s.status && s.status.toLowerCase() !== 'open' ? s.status : 'None');
+
+      const statusMatch = status === 'All' || suggestionEffectiveStatus === status;
+        
       return categoryMatch && statusMatch;
     });
   }, [suggestions, categoryId, status, user]);
 
   const isMine = categoryId === 'Mine';
-  const isLoading = suggestionsLoading || categoriesLoading;
+  const isLoading = suggestionsLoading || categoriesLoading || statusesLoading;
 
   if (isLoading) {
     return (
@@ -43,7 +62,7 @@ function HomeContent() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="w-full flex flex-col gap-8">
       <div className="page-header flex-col items-start gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-3xl font-bold mb-2">
@@ -94,13 +113,37 @@ function HomeContent() {
           >
             Любой статус
           </button>
-          {(['Open', 'Planned', 'In_Progress', 'Completed'] as SuggestionStatus[]).map((s) => (
+
+          <button
+            className={`filter-chip ${status === 'None' ? 'active' : ''}`}
+            onClick={() => setStatus('None')}
+          >
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#6b7280', marginRight: '6px', flexShrink: 0 }} />
+            Без статуса
+          </button>
+          {/* Standard Statuses */}
+          {(['Open', 'Planned', 'In_Progress', 'Completed'] as SuggestionStatus[])
+            .filter(std => !statuses.some(ds => ds.name === std.replace('_', ' ')))
+            .map((s) => (
             <button
               key={s}
               className={`filter-chip ${status === s ? 'active' : ''}`}
               onClick={() => setStatus(s)}
             >
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: STATUS_COLORS[s] || '#6b7280', marginRight: '6px', flexShrink: 0 }} />
               {s.replace('_', ' ')}
+            </button>
+          ))}
+          
+          {/* Dynamic Statuses */}
+          {statuses.map((s) => (
+            <button
+              key={s.id}
+              className={`filter-chip ${status === s.id ? 'active' : ''}`}
+              onClick={() => setStatus(s.id)}
+            >
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: s.color, marginRight: '6px', flexShrink: 0 }} />
+              {s.name}
             </button>
           ))}
         </div>

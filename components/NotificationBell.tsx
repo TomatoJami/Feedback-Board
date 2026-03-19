@@ -60,8 +60,17 @@ export default function NotificationBell() {
 
       {isOpen && (
         <div className="notification-dropdown">
-          <div className="notification-dropdown-header">
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Уведомления</h3>
+          <div 
+            className="notification-dropdown-header"
+            style={{
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+            }}
+          >
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Уведомления</h3>
             {unreadCount > 0 && (
               <button
                 className="mark-all-read"

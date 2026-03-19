@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import pb from '@/lib/pocketbase';
+import { logger } from '@/lib/logger';
 import toast from 'react-hot-toast';
 import { useAuth } from './useAuth';
 import type { Vote, VoteType } from '@/types';
@@ -150,8 +151,8 @@ export function useVote(suggestionId: string): UseVoteReturn {
       setTimeout(() => setCooldownActive(false), VOTE_COOLDOWN_MS);
       startRevocationTimer();
     } catch (err: any) {
-      console.error('Vote failed:', err);
-      toast.error(err.message || 'Ошибка при голосовании');
+      logger.error('Vote failed:', err);
+      toast.error('Ошибка при голосовании');
     } finally {
       setIsLoading(false);
     }
@@ -170,8 +171,8 @@ export function useVote(suggestionId: string): UseVoteReturn {
       setVoteId(null);
       clearTimers();
     } catch (err: any) {
-      console.error('Revoke failed:', err);
-      toast.error(err.message || 'Ошибка при отмене голоса');
+      logger.error('Revoke failed:', err);
+      toast.error('Ошибка при отмене голоса');
     } finally {
       setIsLoading(false);
     }
