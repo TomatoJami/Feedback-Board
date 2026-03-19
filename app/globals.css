@@ -101,13 +101,19 @@ h1, h2, h3, h4 {
   border: 1px solid transparent;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-primary {
   background: var(--accent-gradient);
   color: white;
   border: none;
 }
 
-.btn-primary:hover {
+.btn-primary:not(:disabled):hover {
   opacity: 0.9;
   transform: translateY(-1px);
 }
@@ -117,7 +123,7 @@ h1, h2, h3, h4 {
   color: var(--text-secondary);
 }
 
-.btn-ghost:hover {
+.btn-ghost:not(:disabled):hover {
   background: var(--glass-bg);
   color: var(--text-primary);
 }

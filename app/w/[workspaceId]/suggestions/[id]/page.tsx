@@ -69,11 +69,14 @@ export default function SuggestionDetailPage() {
             requestKey: null
           })
         ]);
+        if (record.workspace_id !== params.workspaceId) {
+          throw new Error('Suggestion does not belong to this workspace');
+        }
         setSuggestion(record);
         if (settingsRecords.length > 0) setSettings(settingsRecords[0]);
       } catch (err) {
         logger.error('Fetch error:', err);
-        router.push('/');
+        router.push(`/w/${params.workspaceId}`);
       } finally {
         setLoading(false);
       }
@@ -113,7 +116,7 @@ export default function SuggestionDetailPage() {
     try {
       await pb.collection('suggestions').delete(id);
       toast.success('Предложение удалено');
-      router.push('/');
+      router.push(`/w/${params.workspaceId}`);
     } catch (err: any) {
       logger.error('Delete failed:', err);
       toast.error('Ошибка при удалении');
@@ -161,7 +164,7 @@ export default function SuggestionDetailPage() {
 
   return (
     <div className="detail-container w-full !max-w-full">
-      <Link href="/" className="detail-back">
+      <Link href={`/w/${params.workspaceId}`} className="detail-back">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
@@ -203,6 +206,7 @@ export default function SuggestionDetailPage() {
         onVote={voteComment}
         onReply={addComment}
         authorId={authorId}
+        workspaceId={params.workspaceId as string}
       />
 
       {showDeleteModal && (

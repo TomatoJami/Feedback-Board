@@ -62,7 +62,7 @@ export function useComments(suggestionId: string) {
       });
       
       if (e.action === 'create') {
-        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user.prefix' }).then(full => {
+        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user.prefixes' }).then(full => {
           setComments(prev => prev.map(c => c.id === full.id ? full : c));
         }).catch(() => {});
       }
@@ -82,7 +82,7 @@ export function useComments(suggestionId: string) {
     });
     
     try {
-      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user.prefix' });
+      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user.prefixes' });
       setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
       return full;
     } catch {

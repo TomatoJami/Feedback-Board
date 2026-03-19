@@ -82,7 +82,7 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
       </div>
 
       {/* Content column — wrapped in Link */}
-      <Link href={`/suggestions/${suggestion.id}`} className="card-content suggestion-card-link">
+      <Link href={`/w/${suggestion.workspace_id}/suggestions/${suggestion.id}`} className="card-content suggestion-card-link">
         <div className="card-header">
           <div className="card-badges">
             <span className="category-badge">

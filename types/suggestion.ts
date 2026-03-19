@@ -15,6 +15,7 @@ export interface Suggestion extends RecordModel {
   is_public: boolean;
   votes_count: number;
   status_id?: string;
+  workspace_id: string;
   expand?: {
     author?: User;
     category_id?: Category;
@@ -26,6 +27,7 @@ export interface CreateSuggestionDTO {
   title: string;
   description?: string;
   category_id: string;
+  workspace_id: string;
   image?: File;
   is_public?: boolean;
 }

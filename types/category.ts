@@ -3,4 +3,5 @@ import { RecordModel } from 'pocketbase';
 export interface Category extends RecordModel {
   name: string;
   icon: string;
+  workspace_id: string;
 }

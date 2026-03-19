@@ -25,9 +25,10 @@ interface CommentItemProps {
   userVotes: Record<string, 'upvote' | 'downvote' | null>;
   onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
   onReply: (userId: string, text: string, parentId: string) => Promise<any>;
+  workspaceId?: string;
 }
 
-export default function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, onReply }: CommentItemProps) {
+export default function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, onReply, workspaceId }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -86,7 +87,9 @@ export default function CommentItem({ comment, allComments, authorId, user, user
             </div>
             <span className="comment-name">{cName}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
-              {cUser?.expand?.prefixes?.map((prefix: any, idx: number) => (
+              {cUser?.expand?.prefixes
+                ?.filter((p: any) => p.workspace_id === workspaceId || !p.workspace_id)
+                .map((prefix: any, idx: number) => (
                 <span key={idx} style={{ 
                   color: prefix.color, 
                   fontSize: '0.6rem', 
@@ -189,6 +192,7 @@ export default function CommentItem({ comment, allComments, authorId, user, user
               userVotes={userVotes}
               onVote={onVote}
               onReply={onReply}
+              workspaceId={workspaceId}
             />
           ))}
         </div>

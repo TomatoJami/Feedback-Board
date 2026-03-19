@@ -7,6 +7,8 @@ export interface User extends RecordModel {
   name: string;
   avatar: string;
   role?: string;
+  global_role?: 'user' | 'owner';
+  plan?: 'free' | 'pro';
   prefixes?: string[];
   expand?: {
     prefixes?: UserPrefix[];

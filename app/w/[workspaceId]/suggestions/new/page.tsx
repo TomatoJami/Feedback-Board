@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
@@ -12,7 +12,9 @@ import ConfirmModal from '@/components/ConfirmModal';
 
 export default function NewSuggestionPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const params = useParams();
+  const workspaceId = params.workspaceId as string;
+  const { categories, isLoading: categoriesLoading } = useCategories(workspaceId);
   const router = useRouter();
   
   const [title, setTitle] = useState('');
@@ -67,6 +69,10 @@ export default function NewSuggestionPage() {
     setIsSubmitting(true);
     
     try {
+      // Resolve slug to real workspace ID for relation fields
+      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+      const realWorkspaceId = workspaceRecord.id;
+
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
@@ -76,13 +82,14 @@ export default function NewSuggestionPage() {
       formData.append('status_id', settings?.default_status || '');
       formData.append('votes_count', '0');
       formData.append('is_public', 'true');
+      formData.append('workspace_id', realWorkspaceId);
       if (image) {
         formData.append('image', image);
       }
 
       await pb.collection('suggestions').create(formData);
       toast.success('Предложение успешно опубликовано!');
-      router.push('/');
+      router.push(`/w/${workspaceId}`);
     } catch (err: any) {
       logger.error('Failed to create suggestion:', err);
       toast.error('Ошибка при создании предложения');

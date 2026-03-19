@@ -92,7 +92,9 @@ export default function SuggestionDetailCard({
         </div>
         <span className="detail-author-name">{authorName}</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
-          {suggestion.expand?.author?.expand?.prefixes?.map((prefix: any, idx: number) => (
+          {suggestion.expand?.author?.expand?.prefixes
+            ?.filter((p: any) => p.workspace_id === suggestion.workspace_id || !p.workspace_id)
+            .map((prefix: any, idx: number) => (
             <span key={idx} style={{ 
               color: prefix.color, 
               fontSize: '0.65rem', 

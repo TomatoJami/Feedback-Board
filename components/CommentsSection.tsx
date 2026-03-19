@@ -14,6 +14,7 @@ interface CommentsSectionProps {
   onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
   onReply: (userId: string, text: string, parentId: string) => Promise<any>;
   authorId: string;
+  workspaceId?: string;
 }
 
 export default function CommentsSection({
@@ -28,6 +29,7 @@ export default function CommentsSection({
   onVote,
   onReply,
   authorId,
+  workspaceId,
 }: CommentsSectionProps) {
   return (
     <div className="comments-section">
@@ -72,6 +74,7 @@ export default function CommentsSection({
                 userVotes={userVotes}
                 onVote={onVote}
                 onReply={onReply}
+                workspaceId={workspaceId}
               />
             ))}
         </div>
