@@ -4,13 +4,10 @@ import type { Category } from '@/types/category';
 import type { Status } from '@/types/status';
 import type { Workspace } from '@/types/workspace';
 
-export type SuggestionStatus = 'Open' | 'Planned' | 'In_Progress' | 'Completed' | string;
-
 export interface Suggestion extends RecordModel {
   title: string;
   description: string;
   category_id: string;
-  status: SuggestionStatus;
   image: string;
   author: string;
   is_public: boolean;

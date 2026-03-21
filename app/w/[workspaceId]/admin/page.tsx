@@ -17,6 +17,7 @@ import UserManagement from '@/components/admin/UserManagement';
 import SuggestionManagement from '@/components/admin/SuggestionManagement';
 import WorkspaceMemberManagement from '@/components/admin/WorkspaceMemberManagement';
 import WorkspaceDangerZone from '@/components/admin/WorkspaceDangerZone';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const STATUS_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'moderator' | null>(null);
+  const [activeTab, setActiveTab] = useState<'general' | 'board' | 'members' | 'suggestions' | 'danger'>('general');
 
   // Prefix management state
   const [prefixes, setPrefixes] = useState<any[]>([]);
@@ -67,6 +69,20 @@ export default function AdminPage() {
   const [isAddingStat, setIsAddingStat] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    variant: 'danger',
+  });
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -244,14 +260,23 @@ export default function AdminPage() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!window.confirm('Вы уверены? Предложения в этой категории останутся без категории.')) return;
-    try {
-      await pb.collection('categories').delete(id);
-      setCategories((prev) => prev.filter((c) => c.id !== id));
-      toast.success('Категория удалена');
-    } catch (err) {
-      toast.error('Ошибка при удалении категории');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Удалить категорию',
+      message: 'Вы уверены? Предложения в этой категории останутся без категории.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await pb.collection('categories').delete(id);
+          setCategories((prev) => prev.filter((c) => c.id !== id));
+          toast.success('Категория удалена');
+        } catch (err) {
+          toast.error('Ошибка при удалении категории');
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const handleAddStatus = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -272,14 +297,23 @@ export default function AdminPage() {
   };
 
   const handleDeleteStatus = async (id: string) => {
-    if (!window.confirm('Вы уверены? Это может затронуть привязанные предложения.')) return;
-    try {
-      await pb.collection('statuses').delete(id);
-      setStatuses((prev) => prev.filter((s) => s.id !== id));
-      toast.success('Статус удален');
-    } catch (err) {
-      toast.error('Ошибка при удалении статуса');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Удалить статус',
+      message: 'Вы уверены? Это может затронуть привязанные предложения.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await pb.collection('statuses').delete(id);
+          setStatuses((prev) => prev.filter((s) => s.id !== id));
+          toast.success('Статус удален');
+        } catch (err) {
+          toast.error('Ошибка при удалении статуса');
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const handleUpdateSettings = async (updates: Partial<Settings>) => {
@@ -318,14 +352,23 @@ export default function AdminPage() {
   };
 
   const handleDeletePrefix = async (id: string) => {
-    if (!window.confirm('Вы уверены?')) return;
-    try {
-      await pb.collection('user_prefixes').delete(id);
-      setPrefixes((prev) => prev.filter((p) => p.id !== id));
-      toast.success('Префикс удален');
-    } catch (err) {
-      toast.error('Ошибка при удалении префикса');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Удалить префикс',
+      message: 'Вы уверены, что хотите удалить этот префикс?',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await pb.collection('user_prefixes').delete(id);
+          setPrefixes((prev) => prev.filter((p) => p.id !== id));
+          toast.success('Префикс удален');
+        } catch (err) {
+          toast.error('Ошибка при удалении префикса');
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const handleUpdateMemberPrefix = async (memberId: string, prefixIds: string[]) => {
@@ -336,6 +379,17 @@ export default function AdminPage() {
       toast.success('Префиксы участника обновлены');
     } catch (err) {
       toast.error('Ошибка при обновлении префиксов');
+    }
+  };
+
+  const handleUpdateMemberRole = async (memberId: string, role: string) => {
+    try {
+      await pb.collection('workspace_members').update(memberId, { role });
+      const updatedMember = await pb.collection('workspace_members').getOne(memberId, { expand: 'user,prefixes', requestKey: null });
+      setMembers((prev) => prev.map(m => m.id === memberId ? updatedMember : m));
+      toast.success('Роль участника обновлена');
+    } catch (err) {
+      toast.error('Ошибка при обновлении роли');
     }
   };
 
@@ -395,91 +449,139 @@ export default function AdminPage() {
 
       <AdminHeader />
 
-      {userRole === 'admin' && (
-        <PlatformSettings
-          settings={settings}
-          statuses={statuses}
-          isSavingSettings={isSavingSettings}
-          onUpdateSettings={handleUpdateSettings}
-        />
-      )}
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', borderBottom: '1px solid var(--border-color)', padding: '0 8px' }}>
+        {[
+          { id: 'general', name: 'Общие', icon: '⚙️' },
+          { id: 'board', name: 'Доска', icon: '📋' },
+          { id: 'members', name: 'Участники', icon: '👥' },
+          { id: 'suggestions', name: 'Предложения', icon: '💡' },
+          { id: 'danger', name: 'Опасная зона', icon: '⚠️' }
+        ].filter(t => userRole === 'admin' || t.id !== 'danger').map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 16px',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+              background: 'none',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.95rem',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            <span>{tab.icon}</span>
+            {tab.name}
+          </button>
+        ))}
+      </div>
 
-      {userRole === 'admin' && (
-        <CategoryManagement
-          categories={categories}
-          newCatName={newCatName}
-          setNewCatName={setNewCatName}
-          newCatIcon={newCatIcon}
-          setNewCatIcon={setNewCatIcon}
-          showIconPicker={showIconPicker}
-          setShowIconPicker={setShowIconPicker}
-          isAddingCat={isAddingCat}
-          onAddCategory={handleAddCategory}
-          onDeleteCategory={handleDeleteCategory}
-          pickerRef={pickerRef}
-        />
-      )}
+      <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+        {activeTab === 'general' && userRole === 'admin' && (
+          <PlatformSettings
+            settings={settings}
+            statuses={statuses}
+            isSavingSettings={isSavingSettings}
+            onUpdateSettings={handleUpdateSettings}
+          />
+        )}
 
-      {userRole === 'admin' && (
-        <StatusManagement
-          statuses={statuses}
-          newStatName={newStatName}
-          setNewStatName={setNewStatName}
-          newStatColor={newStatColor}
-          setNewStatColor={setNewStatColor}
-          showColorPicker={showColorPicker}
-          setShowColorPicker={setShowColorPicker}
-          isAddingStat={isAddingStat}
-          onAddStatus={handleAddStatus}
-          onDeleteStatus={handleDeleteStatus}
-          colorPickerRef={colorPickerRef}
-          statusColors={STATUS_COLORS}
-        />
-      )}
+        {activeTab === 'board' && (
+          <>
+            {userRole === 'admin' && (
+              <>
+                <CategoryManagement
+                  categories={categories}
+                  newCatName={newCatName}
+                  setNewCatName={setNewCatName}
+                  newCatIcon={newCatIcon}
+                  setNewCatIcon={setNewCatIcon}
+                  showIconPicker={showIconPicker}
+                  setShowIconPicker={setShowIconPicker}
+                  isAddingCat={isAddingCat}
+                  onAddCategory={handleAddCategory}
+                  onDeleteCategory={handleDeleteCategory}
+                  pickerRef={pickerRef}
+                />
+                <StatusManagement
+                  statuses={statuses}
+                  newStatName={newStatName}
+                  setNewStatName={setNewStatName}
+                  newStatColor={newStatColor}
+                  setNewStatColor={setNewStatColor}
+                  showColorPicker={showColorPicker}
+                  setShowColorPicker={setShowColorPicker}
+                  isAddingStat={isAddingStat}
+                  onAddStatus={handleAddStatus}
+                  onDeleteStatus={handleDeleteStatus}
+                  colorPickerRef={colorPickerRef}
+                  statusColors={STATUS_COLORS}
+                />
+              </>
+            )}
+            <PrefixManagement
+              prefixes={prefixes}
+              newPrefixName={newPrefixName}
+              setNewPrefixName={setNewPrefixName}
+              newPrefixColor={newPrefixColor}
+              setNewPrefixColor={setNewPrefixColor}
+              showPrefixColorPicker={showPrefixColorPicker}
+              setShowPrefixColorPicker={setShowPrefixColorPicker}
+              isAddingPrefix={isAddingPrefix}
+              onAddPrefix={handleAddPrefix}
+              onDeletePrefix={handleDeletePrefix}
+              prefixColorPickerRef={prefixColorPickerRef}
+              statusColors={STATUS_COLORS}
+              isReadOnly={userRole === 'moderator'}
+            />
+          </>
+        )}
 
-      <PrefixManagement
-        prefixes={prefixes}
-        newPrefixName={newPrefixName}
-        setNewPrefixName={setNewPrefixName}
-        newPrefixColor={newPrefixColor}
-        setNewPrefixColor={setNewPrefixColor}
-        showPrefixColorPicker={showPrefixColorPicker}
-        setShowPrefixColorPicker={setShowPrefixColorPicker}
-        isAddingPrefix={isAddingPrefix}
-        onAddPrefix={handleAddPrefix}
-        onDeletePrefix={handleDeletePrefix}
-        prefixColorPickerRef={prefixColorPickerRef}
-        statusColors={STATUS_COLORS}
-        isReadOnly={userRole === 'moderator'}
+        {activeTab === 'members' && (
+          <WorkspaceMemberManagement
+            workspaceId={activeWorkspace?.id || workspaceId}
+            members={members}
+            prefixes={prefixes}
+            currentUser={user}
+            onMembersUpdated={fetchData}
+            onUpdateMemberPrefix={handleUpdateMemberPrefix}
+            onUpdateMemberRole={handleUpdateMemberRole}
+            isPublic={!activeWorkspace?.isPrivate}
+          />
+        )}
+
+        {activeTab === 'suggestions' && (
+          <SuggestionManagement
+            suggestions={suggestions}
+            statuses={statuses}
+            updatingId={updatingId}
+            onStatusChange={handleStatusChange}
+            onAssigneeChange={handleAssigneeChange}
+            members={members}
+          />
+        )}
+        
+        {activeTab === 'danger' && activeWorkspace && userRole === 'admin' && (
+          <WorkspaceDangerZone workspace={activeWorkspace} />
+        )}
+      </div>
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
-
-      <UserManagement
-        allUsers={allUsers}
-        user={user}
-        isUpdatingUser={isUpdatingUser}
-        showGlobalRole={false}
-      />
-
-      <WorkspaceMemberManagement
-        workspaceId={activeWorkspace?.id || workspaceId}
-        members={members}
-        prefixes={prefixes}
-        currentUser={user}
-        onMembersUpdated={fetchData}
-        onUpdateMemberPrefix={handleUpdateMemberPrefix}
-        isPublic={!activeWorkspace?.isPrivate}
-      />
-
-      <SuggestionManagement
-        suggestions={suggestions}
-        statuses={statuses}
-        updatingId={updatingId}
-        onStatusChange={handleStatusChange}
-        onAssigneeChange={handleAssigneeChange}
-        members={members}
-      />
-      
-      {activeWorkspace && userRole === 'admin' && <WorkspaceDangerZone workspace={activeWorkspace} />}
     </div>
   );
 }

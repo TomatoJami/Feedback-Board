@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { Settings } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
+import MarkdownEditor from '@/components/MarkdownEditor';
 
 export default function NewSuggestionPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -91,7 +92,6 @@ export default function NewSuggestionPage() {
       formData.append('description', description);
       formData.append('category_id', categoryId);
       formData.append('author', user.id);
-      formData.append('status', '');
       formData.append('status_id', settings?.default_status || '');
       formData.append('votes_count', '0');
       formData.append('is_public', 'true');
@@ -194,19 +194,11 @@ export default function NewSuggestionPage() {
 
         <div className="flex flex-col gap-2">
           <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание (опционально)</label>
-          <textarea
+          <MarkdownEditor 
             value={description}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-            className="w-full transition-all outline-none resize-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
-            style={{
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px 16px',
-              color: 'var(--text-primary)',
-              minHeight: '160px'
-            }}
-            placeholder="Расскажите подробнее..."
+            onChange={setDescription}
+            placeholder="Опишите вашу идею подробнее. Поддерживается Markdown (списки, жирный текст, ссылки)..."
+            minHeight="250px"
           />
         </div>
 

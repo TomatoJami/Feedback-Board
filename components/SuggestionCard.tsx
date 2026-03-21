@@ -41,9 +41,8 @@ export default function SuggestionCard({ suggestion, workspaceSlug }: Suggestion
   const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote } = useVote(suggestion.id);
 
   const dynamicStatus = suggestion.expand?.status_id;
-  const normalizedStatus = suggestion.status && suggestion.status.trim() ? (suggestion.status.charAt(0).toUpperCase() + suggestion.status.slice(1).toLowerCase().replace(' ', '_')) : 'Open';
-  const statusColor = dynamicStatus?.color || STATUS_COLORS[normalizedStatus] || '#6b7280';
-  const statusLabel = dynamicStatus?.name || normalizedStatus.replace('_', ' ');
+  const statusColor = dynamicStatus?.color || '#3b82f6'; // Default blue for Open or missing
+  const statusLabel = dynamicStatus?.name || 'Открыто';
   
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';

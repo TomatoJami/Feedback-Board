@@ -9,6 +9,8 @@ interface FilterSectionProps {
   categories: Category[];
   statuses: Status[];
   user: any;
+  sortBy: 'votes' | 'newest' | 'oldest';
+  setSortBy: (sort: 'votes' | 'newest' | 'oldest') => void;
 }
 
 export default function FilterSection({
@@ -18,7 +20,9 @@ export default function FilterSection({
   setStatus,
   categories,
   statuses,
-  user
+  user,
+  sortBy,
+  setSortBy
 }: FilterSectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -78,6 +82,31 @@ export default function FilterSection({
             {s.name}
           </button>
         ))}
+      </div>
+
+      {/* Sort Options */}
+      <div className="filters-bar" style={{ marginTop: '8px' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '8px', display: 'flex', alignItems: 'center' }}>
+          Сортировка:
+        </span>
+        <button
+          className={`filter-chip ${sortBy === 'votes' ? 'active' : ''}`}
+          onClick={() => setSortBy('votes')}
+        >
+          🔥 Популярные
+        </button>
+        <button
+          className={`filter-chip ${sortBy === 'newest' ? 'active' : ''}`}
+          onClick={() => setSortBy('newest')}
+        >
+          ✨ Новые
+        </button>
+        <button
+          className={`filter-chip ${sortBy === 'oldest' ? 'active' : ''}`}
+          onClick={() => setSortBy('oldest')}
+        >
+          ⏳ Старые
+        </button>
       </div>
     </div>
   );

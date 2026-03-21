@@ -155,9 +155,8 @@ export default function SuggestionDetailPage() {
   if (!suggestion) return null;
 
   const dynamicStatus = suggestion.expand?.status_id;
-  const normalizedStatus = suggestion.status && suggestion.status.trim() ? (suggestion.status.charAt(0).toUpperCase() + suggestion.status.slice(1).toLowerCase().replace(' ', '_')) : 'Open';
-  const statusColor = dynamicStatus?.color || STATUS_COLORS[normalizedStatus] || '#6b7280';
-  const statusLabel = dynamicStatus?.name || normalizedStatus.replace('_', ' ');
+  const statusColor = dynamicStatus?.color || '#3b82f6';
+  const statusLabel = dynamicStatus?.name || 'Открыто';
   
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
@@ -179,18 +178,25 @@ export default function SuggestionDetailPage() {
   const canDeleteSuggestion = 
     isAdmin || 
     isModerator ||
-    (isAuthor && (suggestion?.expand?.status_id?.name === 'Open' || !suggestion.status));
+    (isAuthor && (suggestion?.expand?.status_id?.name === 'Open' || !suggestion.status_id));
 
   const showDeleteBtn = canDeleteSuggestion;
 
   return (
     <div className="detail-container w-full !max-w-full">
-      <Link href={`/w/${workspaceId}`} className="detail-back">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Назад к предложениям
-      </Link>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+        <Link href={`/w/${workspaceId}`} style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>
+          {suggestion.expand?.workspace_id?.name || 'Воркспейс'}
+        </Link>
+        <span>/</span>
+        <Link href={`/w/${workspaceId}`} style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>
+          Предложения
+        </Link>
+        <span>/</span>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+          {suggestion.title}
+        </span>
+      </nav>
 
       <SuggestionDetailCard
         suggestion={suggestion}

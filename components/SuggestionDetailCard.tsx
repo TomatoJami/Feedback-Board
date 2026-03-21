@@ -1,5 +1,6 @@
-import React from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import type { Suggestion } from '@/types';
 import Badge from '@/components/ui/Badge';
@@ -128,10 +129,22 @@ export default function SuggestionDetailCard({
       </div>
 
       {suggestion.description && (
-        <div
-          className="detail-description"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(suggestion.description) }}
-        />
+        <div className="detail-description markdown-body">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeSanitize]}
+            components={{
+              a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
+              code: ({node, inline, ...props}: any) => 
+                inline 
+                  ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
+                  : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code {...props} /></pre>,
+              img: ({node, ...props}) => <img className="rounded-xl max-w-full h-auto border border-white/10 mb-6 shadow-2xl" {...props} />
+            }}
+          >
+            {suggestion.description}
+          </ReactMarkdown>
+        </div>
       )}
 
       {imageUrl && (

@@ -98,6 +98,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       suggestion: suggestionId,
       text,
       parent_id: parentId || null,
+      workspace_id: workspaceId || null,
     });
     
     try {

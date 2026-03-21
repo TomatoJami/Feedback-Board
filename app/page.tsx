@@ -11,7 +11,9 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import Hero from '@/components/landing/Hero';
 import Features from '@/components/landing/Features';
 import LivePreview from '@/components/landing/LivePreview';
+import HowItWorks from '@/components/landing/HowItWorks';
 import FAQ from '@/components/landing/FAQ';
+import Reveal from '@/components/ui/Reveal';
 import Pricing from '@/components/landing/Pricing';
 import CTA from '@/components/landing/CTA';
 import LandingFooter from '@/components/landing/Footer';
@@ -38,12 +40,13 @@ export default function GlobalHome() {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-start overflow-hidden antialiased">
         <div className="relative z-10 w-full flex flex-col items-center pt-24 pb-2 px-6 gap-16 text-zinc-400">
-          <Hero />
-          <Features />
-          <LivePreview />
-          <Pricing />
-
-          <CTA />
+          <Reveal delay={0.1}><Hero /></Reveal>
+          <Reveal delay={0.2}><Features /></Reveal>
+          <Reveal delay={0.3}><LivePreview /></Reveal>
+          <Reveal delay={0.4}><HowItWorks /></Reveal>
+          <Reveal delay={0.5}><Pricing /></Reveal>
+          <Reveal delay={0.6}><FAQ /></Reveal>
+          <Reveal delay={0.7}><CTA /></Reveal>
           <div className="w-full flex flex-col items-center gap-0">
             <div className="w-full max-w-7xl mx-auto px-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
             <LandingFooter />

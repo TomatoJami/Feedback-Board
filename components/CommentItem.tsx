@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
+import DOMPurify from 'isomorphic-dompurify'; // Keep as backup or for manual use if needed
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
 import { toast } from 'react-hot-toast';
+import MarkdownEditor from '@/components/MarkdownEditor';
+import ConfirmModal from '@/components/ConfirmModal';
 
 // Deterministic color from string
 function getColor(id: string): string {
@@ -59,6 +65,7 @@ export default function CommentItem({
   const [editText, setEditText] = useState(comment.text);
   const [isUpdating, setIsUpdating] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     // Check if 5 minutes passed since comment creation
@@ -128,12 +135,13 @@ export default function CommentItem({
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
     try {
       await onDelete(comment.id);
       toast.success('Комментарий удален');
     } catch (err) {
       toast.error('Ошибка при удалении');
+    } finally {
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -214,7 +222,7 @@ export default function CommentItem({
             </time>
             {canDelete && (
               <button 
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="comment-delete-btn"
                 title="Удалить комментарий"
               >
@@ -227,34 +235,50 @@ export default function CommentItem({
         </div>
         
         {isEditing ? (
-          <form onSubmit={handleEditSubmit} style={{ marginTop: '8px', marginBottom: '12px' }}>
-            <input
-              autoFocus
-              className="comment-input"
+          <div style={{ marginTop: '8px', marginBottom: '12px' }}>
+            <MarkdownEditor 
               value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                padding: '8px 12px',
-                color: 'white',
-                fontSize: '0.9rem',
-                marginBottom: '8px'
-              }}
+              onChange={setEditText}
+              minHeight="80px"
+              resizable={false}
+              placeholder="Измените ваш комментарий..."
             />
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button type="submit" className="comment-send small" disabled={isUpdating}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={(e) => handleEditSubmit(e as any)} 
+                disabled={isUpdating}
+                style={{ fontSize: '0.8rem', padding: '6px 16px' }}
+              >
                 {isUpdating ? '...' : 'Сохранить'}
               </button>
-              <button type="button" className="comment-cancel small" onClick={() => setIsEditing(false)}>
+              <button 
+                type="button" 
+                className="btn btn-ghost" 
+                onClick={() => setIsEditing(false)}
+                style={{ fontSize: '0.8rem', padding: '6px 16px' }}
+              >
                 Отмена
               </button>
             </div>
-          </form>
+          </div>
         ) : (
-          <p className="comment-text">{comment.text}</p>
+          <div className="comment-text markdown-body">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              components={{
+                a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
+                code: ({node, inline, ...props}: any) => 
+                  inline 
+                    ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
+                    : <pre className="bg-black/40 p-2 rounded overflow-x-auto text-[0.9em] mb-2 border border-white/5"><code {...props} /></pre>
+              }}
+            >
+              {comment.text}
+            </ReactMarkdown>
+          </div>
         )}
         
         <div className="comment-actions">
@@ -309,26 +333,47 @@ export default function CommentItem({
         </div>
 
         {showReply && (
-          <form className="comment-reply-form" onSubmit={handleReplySubmit}>
-            <input
-              autoFocus
-              className="comment-input small"
-              placeholder={`Ответить пользователю ${cName}...`}
+          <div className="comment-reply-form" style={{ marginTop: '12px' }}>
+            <MarkdownEditor 
               value={replyText}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReplyText(e.target.value)}
-              required
+              onChange={setReplyText}
+              minHeight="80px"
+              resizable={false}
+              placeholder={`Ответить пользователю ${cName}...`}
             />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="submit" className="comment-send small" disabled={isSending}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={(e) => handleReplySubmit(e as any)} 
+                disabled={isSending}
+                style={{ fontSize: '0.8rem', padding: '6px 16px' }}
+              >
                 {isSending ? '...' : 'Ответить'}
               </button>
-              <button type="button" className="comment-cancel small" onClick={() => setShowReply(false)}>
+              <button 
+                type="button" 
+                className="btn btn-ghost" 
+                onClick={() => setShowReply(false)}
+                style={{ fontSize: '0.8rem', padding: '6px 16px' }}
+              >
                 Отмена
               </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Удалить комментарий"
+        message="Вы уверены, что хотите удалить этот комментарий? Это действие нельзя отменить."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
 
       {replies.length > 0 && (
         <div className="comment-replies">

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import CommentItem from '@/components/CommentItem';
+import MarkdownEditor from '@/components/MarkdownEditor'; // Assuming MarkdownEditor is in '@/components' based on other imports
 import { useComments } from '@/hooks/useComments';
 import { toast } from 'react-hot-toast';
 
@@ -61,35 +62,26 @@ export default function CommentsSection({
       </h2>
 
       {user && (
-        <form className="comment-form" onSubmit={handleComment} style={{ marginBottom: '24px' }}>
-          <input
-            className="comment-input"
-            placeholder="Написать комментарий..."
+        <div className="comment-form" style={{ marginBottom: '24px' }}>
+          <MarkdownEditor 
             value={commentText}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCommentText(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px 16px',
-              color: 'white',
-              fontSize: '0.9rem',
-              marginBottom: '12px'
-            }}
+            onChange={setCommentText}
+            minHeight="100px"
+            resizable={false}
+            placeholder="Написать комментарий... Поддерживается Markdown."
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button
-              type="submit"
+              type="button"
               className="btn btn-primary"
+              onClick={(e) => handleComment(e as any)}
               disabled={sending || !commentText.trim()}
-              style={{ fontSize: '0.85rem', padding: '8px 20px' }}
+              style={{ fontSize: '0.85rem', padding: '8px 24px' }}
             >
               {sending ? '...' : 'Отправить'}
             </button>
           </div>
-        </form>
+        </div>
       )}
 
       {isLoading ? (

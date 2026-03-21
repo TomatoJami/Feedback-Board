@@ -13,7 +13,7 @@ export default function CTA() {
           <span className="text-indigo-400">пользователей?</span>
         </h2>
         <p className="text-lg md:text-xl text-zinc-400 mb-16 max-w-xl mx-auto leading-relaxed" style={{ textAlign: 'center' }}>
-          Присоединяйтесь к сотням проектов, которые уже управляют развитием на основе реальной обратной связи.
+          Начните развивать свой продукт системно, основываясь на реальной обратной связи от вашей целевой аудитории.
         </p>
         <Link
           href="/auth/register"
