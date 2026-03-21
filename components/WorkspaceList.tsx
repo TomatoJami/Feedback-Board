@@ -9,12 +9,12 @@ import Link from 'next/link';
 
 interface WorkspaceListProps {
   filterType: 'all' | 'mine' | 'invited';
+  search: string;
 }
 
-export default function WorkspaceList({ filterType }: WorkspaceListProps) {
+export default function WorkspaceList({ filterType, search }: WorkspaceListProps) {
   const { workspaces, invitedWorkspaceIds, isLoading } = useWorkspaces();
   const { user } = useAuth();
-  const [search, setSearch] = useState('');
 
   const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((w) => {
@@ -46,24 +46,7 @@ export default function WorkspaceList({ filterType }: WorkspaceListProps) {
   return (
     <div className="flex flex-col gap-8">
       
-      <div className="relative w-full max-w-lg">
-        <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-        <input
-          type="text"
-          placeholder="Поиск по пространствам..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full transition-all outline-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
-          style={{
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            padding: '12px 16px 12px 42px',
-            color: 'var(--text-primary)',
-            fontSize: '0.95rem'
-          }}
-        />
-      </div>
+      {/* Search Input removed, moved to parent */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredWorkspaces.length === 0 ? (

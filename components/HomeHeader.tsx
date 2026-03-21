@@ -6,9 +6,9 @@ interface HomeHeaderProps {
 
 export default function HomeHeader({ isMine }: HomeHeaderProps) {
   return (
-    <div className="page-header flex-col items-start gap-4 sm:flex-row sm:items-end">
+    <div className="page-header flex-col items-start gap-4 sm:flex-row sm:items-end pt-12">
       <div>
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-3xl font-bold mb-2 text-white">
           {isMine ? 'Мои предложения' : 'Предложения'}
         </h1>
         <p className="text-zinc-400">

@@ -6,10 +6,12 @@ import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
 
-export function useComments(suggestionId: string) {
+export function useComments(suggestionId: string, workspaceId?: string) {
   const [comments, setComments] = useState<SuggestionComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userVotes, setUserVotes] = useState<Record<string, 'upvote' | 'downvote' | null>>({});
+  const [memberPrefixes, setMemberPrefixes] = useState<Record<string, any[]>>({});
+
 
   const fetchComments = useCallback(async () => {
     try {
@@ -17,7 +19,7 @@ export function useComments(suggestionId: string) {
       const records = await pb.collection('comments').getFullList<SuggestionComment>({
         filter: `suggestion = "${suggestionId}"`,
         sort: 'created',
-        expand: 'user.prefixes',
+        expand: 'user',
         requestKey: null,
       });
       setComments(records);
@@ -34,12 +36,29 @@ export function useComments(suggestionId: string) {
         });
         setUserVotes(voteMap);
       }
+
+      // 3. Fetch workspace members mapped to prefixes
+      if (workspaceId) {
+        const members = await pb.collection('workspace_members').getFullList({
+          filter: `workspace = "${workspaceId}"`,
+          expand: 'prefixes',
+          requestKey: null,
+        });
+        const prefixMap: Record<string, any[]> = {};
+        members.forEach(m => {
+          if (m.expand?.prefixes) {
+            prefixMap[m.user] = m.expand.prefixes;
+          }
+        });
+        setMemberPrefixes(prefixMap);
+      }
+
     } catch (err) {
       logger.error('Failed to fetch comments:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [suggestionId]);
+  }, [suggestionId, workspaceId]);
 
   useEffect(() => {
     fetchComments();
@@ -62,7 +81,7 @@ export function useComments(suggestionId: string) {
       });
       
       if (e.action === 'create') {
-        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user.prefixes' }).then(full => {
+        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user' }).then(full => {
           setComments(prev => prev.map(c => c.id === full.id ? full : c));
         }).catch(() => {});
       }
@@ -82,7 +101,7 @@ export function useComments(suggestionId: string) {
     });
     
     try {
-      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user.prefixes' });
+      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user' });
       setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
       return full;
     } catch {
@@ -138,5 +157,36 @@ export function useComments(suggestionId: string) {
     }
   }, [userVotes]);
 
-  return { comments, isLoading, userVotes, addComment, voteComment, refresh: fetchComments };
+  const updateComment = useCallback(async (id: string, text: string) => {
+    try {
+      const record = await pb.collection('comments').update(id, { text });
+      setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
+      return record;
+    } catch (err) {
+      logger.error('Failed to update comment:', err);
+      throw err;
+    }
+  }, []);
+
+  const deleteComment = useCallback(async (id: string) => {
+    try {
+      await pb.collection('comments').delete(id);
+      setComments((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      logger.error('Failed to delete comment:', err);
+      throw err;
+    }
+  }, []);
+
+  return { 
+    comments, 
+    isLoading, 
+    userVotes, 
+    memberPrefixes,
+    addComment, 
+    voteComment, 
+    updateComment,
+    deleteComment,
+    refresh: fetchComments 
+  };
 }

@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
 import pb from '@/lib/pocketbase';
 import toast from 'react-hot-toast';
-import { CustomSelect } from './AdminUI';
+import { CustomSelect, CustomMultiSelect } from './AdminUI';
 
 interface WorkspaceMemberManagementProps {
   workspaceId: string;
   members: any[];
+  prefixes: any[];
   currentUser: any;
   onMembersUpdated: () => void;
+  onUpdateMemberPrefix: (memberId: string, prefixIds: string[]) => Promise<void>;
+  isPublic?: boolean;
 }
 
 export default function WorkspaceMemberManagement({
   workspaceId,
   members,
+  prefixes,
   currentUser,
-  onMembersUpdated
+  onMembersUpdated,
+  onUpdateMemberPrefix,
+  isPublic = false
 }: WorkspaceMemberManagementProps) {
   const [inviteInput, setInviteInput] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'moderator'>('moderator');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'moderator' | 'user'>('user');
   const [isInviting, setIsInviting] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -50,9 +56,9 @@ export default function WorkspaceMemberManagement({
       onMembersUpdated();
     } catch (err: any) {
       if (err.status === 404) {
-        toast.error('Пользователь не найден по email или никнейму.');
+        toast.error('Пользователь не найден.');
       } else {
-        toast.error('Ошибка при приглашении пользователя.');
+        toast.error('Ошибка при приглашении пользователя. ' + (err.message || ''));
       }
     } finally {
       setIsInviting(false);
@@ -74,6 +80,8 @@ export default function WorkspaceMemberManagement({
       toast.error('Ошибка при удалении участника');
     }
   };
+
+  if (isPublic) return null;
 
   return (
     <section style={{ marginBottom: '48px' }}>
@@ -110,6 +118,7 @@ export default function WorkspaceMemberManagement({
           <div style={{ width: '180px' }}>
             <CustomSelect
               options={[
+                { id: 'user', name: 'Пользователь' },
                 { id: 'moderator', name: 'Модератор' },
                 { id: 'admin', name: 'Админ' }
               ]}
@@ -140,7 +149,7 @@ export default function WorkspaceMemberManagement({
               border: '1px solid var(--border-color)',
               background: 'rgba(255, 255, 255, 0.02)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                 <div style={{
                   width: '40px',
                   height: '40px',
@@ -167,20 +176,32 @@ export default function WorkspaceMemberManagement({
                     {member.user === currentUser?.id && ' (Вы)'}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>
-                    {member.role === 'admin' ? 'Админ' : 'Модератор'}
+                    {member.role === 'admin' ? 'Админ' : member.role === 'moderator' ? 'Модератор' : 'Пользователь'}
                   </div>
                 </div>
               </div>
-              {member.user !== currentUser.id && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMember(member.id, member.user)}
-                  className="btn btn-ghost"
-                  style={{ color: '#f43f5e', fontSize: '0.85rem' }}
-                >
-                  Удалить
-                </button>
-              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ minWidth: '150px', maxWidth: '250px' }}>
+                  <CustomMultiSelect
+                    options={prefixes?.map(p => ({ id: p.id, name: p.name, color: p.color })) || []}
+                    selectedIds={member.prefixes || []}
+                    onChange={(vals) => onUpdateMemberPrefix(member.id, vals)}
+                    placeholder="Префиксы..."
+                  />
+                </div>
+
+                {member.user !== currentUser.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMember(member.id, member.user)}
+                    className="btn btn-ghost"
+                    style={{ color: '#f43f5e', fontSize: '0.85rem' }}
+                  >
+                    Выгнать
+                  </button>
+                )}
+              </div>
             </div>
           ))}
           {members.length === 0 && (

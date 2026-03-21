@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Workspace } from '@/types/workspace';
 import { BuildingStorefrontIcon, LockClosedIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
+import Badge from '@/components/ui/Badge';
 
 interface WorkspaceCardProps {
   workspace: Workspace;
@@ -21,15 +22,15 @@ export default function WorkspaceCard({ workspace }: WorkspaceCardProps) {
         <div className="card-header" style={{ marginBottom: '12px' }}>
           <div className="card-badges">
             {workspace.isPrivate ? (
-              <span className="category-badge flex items-center gap-1.5" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#fb7185' }}>
-                <LockClosedIcon className="w-3.5 h-3.5" />
+              <Badge variant="rose" size="md">
+                <LockClosedIcon className="w-3 h-3 mr-1" />
                 Приватное
-              </span>
+              </Badge>
             ) : (
-              <span className="category-badge flex items-center gap-1.5">
-                <GlobeAltIcon className="w-3.5 h-3.5" />
+              <Badge variant="sky" size="md">
+                <GlobeAltIcon className="w-3 h-3 mr-1" />
                 Публичное
-              </span>
+              </Badge>
             )}
           </div>
         </div>

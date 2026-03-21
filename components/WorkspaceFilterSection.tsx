@@ -12,31 +12,29 @@ export default function WorkspaceFilterSection({
   user
 }: WorkspaceFilterSectionProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="filters-bar">
-        <button
-          className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
-          onClick={() => setFilterType('all')}
-        >
-          Все
-        </button>
-        {user && (
-          <>
-            <button
-              className={`filter-chip ${filterType === 'mine' ? 'active' : ''}`}
-              onClick={() => setFilterType('mine')}
-            >
-              📝 Мои
-            </button>
-            <button
-              className={`filter-chip ${filterType === 'invited' ? 'active' : ''}`}
-              onClick={() => setFilterType('invited')}
-            >
-              🤝 Приглашен
-            </button>
-          </>
-        )}
-      </div>
+    <div className="filters-bar">
+      <button
+        className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
+        onClick={() => setFilterType('all')}
+      >
+        Все
+      </button>
+      {user && (
+        <React.Fragment>
+          <button
+            className={`filter-chip ${filterType === 'mine' ? 'active' : ''}`}
+            onClick={() => setFilterType('mine')}
+          >
+            📝 Мои
+          </button>
+          <button
+            className={`filter-chip ${filterType === 'invited' ? 'active' : ''}`}
+            onClick={() => setFilterType('invited')}
+          >
+            🤝 Приглашен
+          </button>
+        </React.Fragment>
+      )}
     </div>
   );
 }

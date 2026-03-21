@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
@@ -11,6 +12,8 @@ export default function Navbar() {
   const { user, isAdmin, isLoading } = useAuth();
   const params = useParams();
   const workspaceId = params?.workspaceId as string | undefined;
+  const { role: workspaceRole } = useWorkspaceRole(workspaceId);
+  const canManageWorkspace = isAdmin || workspaceRole === 'admin';
 
   return (
     <nav className="navbar" id="main-nav">
@@ -50,7 +53,7 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {isAdmin && workspaceId && (
+              {canManageWorkspace && workspaceId && (
                 <Link href={`/w/${workspaceId}/admin`} className="btn btn-ghost" id="admin-link">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
                     <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
@@ -60,16 +63,30 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {user.global_role === 'owner' && (
-                <Link href="/admin" className="btn btn-ghost" id="owner-link">
+              {user.role === 'admin' && (
+                <Link href="/admin" className="btn btn-ghost" id="admin-panel-link">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
                     <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  Owner
+                  Панель
                 </Link>
               )}
 
               <NotificationBell />
+              
+              {(!user.plan || user.plan === 'free') && (
+                <Link 
+                  href="/auth/settings"
+                  className="group relative flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 hover:border-indigo-500/40 transition-all duration-300"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+                  <span className="relative z-10 text-[10px] font-black tracking-widest text-indigo-400 uppercase">Pro</span>
+                  <span className="relative z-10 max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold text-white group-hover:max-w-[100px] transition-all duration-500 ease-in-out opacity-0 group-hover:opacity-100 ml-0 group-hover:ml-1">
+                    Upgrade
+                  </span>
+                </Link>
+              )}
+
               <UserMenu />
             </>
           ) : (

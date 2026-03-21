@@ -2,6 +2,7 @@ import React from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import type { Suggestion } from '@/types';
+import Badge from '@/components/ui/Badge';
 
 interface SuggestionDetailCardProps {
   suggestion: Suggestion;
@@ -24,6 +25,7 @@ interface SuggestionDetailCardProps {
   onRevoke: () => void;
   onShowDelete: () => void;
   showDeleteBtn: boolean;
+  authorPrefixes?: any[];
 }
 
 export default function SuggestionDetailCard({
@@ -47,6 +49,7 @@ export default function SuggestionDetailCard({
   onRevoke,
   onShowDelete,
   showDeleteBtn,
+  authorPrefixes,
 }: SuggestionDetailCardProps) {
   return (
     <div className="detail-card">
@@ -54,25 +57,23 @@ export default function SuggestionDetailCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <h1 className="detail-title" style={{ margin: 0, lineHeight: 1.2 }}>{suggestion.title}</h1>
-          <span className="category-badge">
+          <Badge variant="zinc" size="md">
             {categoryIcon} {categoryName}
-          </span>
+          </Badge>
         </div>
-        <span 
-          className="status-badge" 
+        <Badge 
+          variant="zinc"
+          size="md" 
+          showDot 
           style={{ 
-            '--status-color': statusColor, 
-            flexShrink: 0,
-            display: 'inline-flex',
-            alignItems: 'center',
-            flexDirection: 'row',
-            gap: '8px',
-            whiteSpace: 'nowrap'
-          } as React.CSSProperties}
+            color: statusColor,
+            background: `${statusColor}15`,
+            borderColor: `${statusColor}33`,
+            flexShrink: 0
+          }}
         >
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-color)', flexShrink: 0 }} />
           {statusLabel}
-        </span>
+        </Badge>
       </div>
 
       {/* Author details */}
@@ -91,28 +92,32 @@ export default function SuggestionDetailCard({
           ) : authorName.charAt(0).toUpperCase()}
         </div>
         <span className="detail-author-name">{authorName}</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
-          {suggestion.expand?.author?.expand?.prefixes
-            ?.filter((p: any) => p.workspace_id === suggestion.workspace_id || !p.workspace_id)
-            .map((prefix: any, idx: number) => (
-            <span key={idx} style={{ 
-              color: prefix.color, 
-              fontSize: '0.65rem', 
-              fontWeight: 800, 
-              textTransform: 'uppercase',
-              background: `${prefix.color}15`,
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: `1px solid ${prefix.color}33`,
-            }}>
-              {prefix.name}
-            </span>
-          ))}
-        </div>
-        {authorRole === 'admin' && (
-          <span className="detail-author-badge badge-admin">Админ</span>
+        {authorPrefixes && authorPrefixes.length > 0 && (
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
+            {authorPrefixes.map((p) => (
+              <span
+                key={p.id}
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.02em',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  backgroundColor: `${p.color}15`,
+                  color: p.color,
+                  border: `1px solid ${p.color}30`
+                }}
+              >
+                {p.name}
+              </span>
+            ))}
+          </div>
         )}
-        <span className="detail-author-badge badge-author">Автор</span>
+        {authorRole === 'admin' && (
+          <Badge variant="amber" size="sm" className="ml-1">Админ</Badge>
+        )}
+        <Badge variant="indigo" size="sm" className="ml-1">Автор</Badge>
         <time className="card-date" style={{ marginLeft: 'auto' }} dateTime={suggestion.created}>
           {new Date(suggestion.created).toLocaleDateString('ru-RU', {
             day: 'numeric',

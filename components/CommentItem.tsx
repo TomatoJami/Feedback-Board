@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
+import { toast } from 'react-hot-toast';
 
 // Deterministic color from string
 function getColor(id: string): string {
@@ -20,24 +23,74 @@ function getColor(id: string): string {
 interface CommentItemProps {
   comment: SuggestionComment;
   allComments: SuggestionComment[];
-  authorId: string;
   user: any;
   userVotes: Record<string, 'upvote' | 'downvote' | null>;
   onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
   onReply: (userId: string, text: string, parentId: string) => Promise<any>;
+  onUpdate: (id: string, text: string) => Promise<any>;
+  onDelete: (id: string) => Promise<void>;
+  workspaceRole?: 'admin' | 'moderator' | 'user' | null;
+  isAdmin?: boolean;
   workspaceId?: string;
+  authorPrefixes?: any[];
+  isSuggestionAuthor?: boolean;
 }
 
-export default function CommentItem({ comment, allComments, authorId, user, userVotes, onVote, onReply, workspaceId }: CommentItemProps) {
+export default function CommentItem({ 
+  comment, 
+  allComments, 
+  user, 
+  userVotes, 
+  onVote, 
+  onReply, 
+  onUpdate,
+  onDelete,
+  workspaceRole,
+  isAdmin = false,
+  workspaceId,
+  authorPrefixes,
+  isSuggestionAuthor = false
+}: CommentItemProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+
+  useEffect(() => {
+    // Check if 5 minutes passed since comment creation
+    const checkCanEdit = () => {
+      if (!user || user.id !== comment.user) {
+        setCanEdit(false);
+        return;
+      }
+      const created = new Date(comment.created).getTime();
+      const now = new Date().getTime();
+      const diffMs = now - created;
+      const fiveMinutesMs = 5 * 60 * 1000;
+      setCanEdit(diffMs < fiveMinutesMs);
+    };
+
+    checkCanEdit();
+    const timer = setInterval(checkCanEdit, 10000); // Check every 10s
+    return () => clearInterval(timer);
+  }, [comment.created, comment.user, user]);
 
   const cUser = comment.expand?.user;
   const cName = cUser?.name || 'Аноним';
   const cColor = getColor(comment.user);
-  const isAuthor = comment.user === authorId;
-  const isAdmin = cUser?.role === 'admin';
+  
+  // Roles check for badges
+  const isCommentAuthor = user?.id === comment.user;
+  const isCommentUserGlobalAdmin = cUser?.role === 'admin';
+  
+  // Can current user delete?
+  const isModerator = workspaceRole === 'moderator' || workspaceRole === 'admin';
+  const canDelete = isAdmin || isModerator;
+
   const replies = allComments.filter(c => c.parent_id === comment.id);
   const currentVote = userVotes[comment.id];
   const score = (comment.upvotes || 0) - (comment.downvotes || 0);
@@ -50,17 +103,43 @@ export default function CommentItem({ comment, allComments, authorId, user, user
       await onReply(user.id, replyText.trim(), comment.id);
       setReplyText('');
       setShowReply(false);
+      toast.success('Ответ отправлен');
     } catch (err) {
       logger.error('Reply failed:', err);
+      toast.error('Ошибка при отправке');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editText.trim() || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await onUpdate(comment.id, editText.trim());
+      setIsEditing(false);
+      toast.success('Комментарий обновлен');
+    } catch (err) {
+      toast.error('Ошибка при обновлении');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот комментарий?')) return;
+    try {
+      await onDelete(comment.id);
+      toast.success('Комментарий удален');
+    } catch (err) {
+      toast.error('Ошибка при удалении');
     }
   };
 
   const handleCommentVote = async (type: 'upvote' | 'downvote') => {
     if (!user) return;
     if (user.id === comment.user) {
-      const toast = (await import('react-hot-toast')).default;
       toast.error('Вы не можете голосовать за свой комментарий');
       return;
     }
@@ -69,7 +148,7 @@ export default function CommentItem({ comment, allComments, authorId, user, user
 
   return (
     <div className={`comment-group ${comment.parent_id ? 'is-reply' : ''}`}>
-      <div className={`comment-card ${isAuthor ? 'is-author' : ''} ${isAdmin ? 'is-admin' : ''}`}>
+      <div className={`comment-card ${isCommentAuthor ? 'is-author' : ''} ${isCommentUserGlobalAdmin ? 'is-admin' : ''}`}>
         <div className="comment-header">
           <div className="comment-user">
             <div className="comment-avatar" style={{ 
@@ -86,38 +165,97 @@ export default function CommentItem({ comment, allComments, authorId, user, user
               ) : cName.charAt(0).toUpperCase()}
             </div>
             <span className="comment-name">{cName}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '4px' }}>
-              {cUser?.expand?.prefixes
-                ?.filter((p: any) => p.workspace_id === workspaceId || !p.workspace_id)
-                .map((prefix: any, idx: number) => (
-                <span key={idx} style={{ 
-                  color: prefix.color, 
-                  fontSize: '0.6rem', 
-                  fontWeight: 800, 
-                  textTransform: 'uppercase',
-                  background: `${prefix.color}15`,
-                  padding: '1px 5px',
-                  borderRadius: '4px',
-                  border: `1px solid ${prefix.color}33`,
-                }}>
-                  {prefix.name}
-                </span>
-              ))}
-            </div>
-            {isAuthor && <span className="detail-author-badge badge-author">Автор</span>}
-            {isAdmin && <span className="detail-author-badge badge-admin">Админ</span>}
+            {authorPrefixes && authorPrefixes.length > 0 && (
+              <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
+                {authorPrefixes.map((p) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: `${p.color}15`,
+                      color: p.color,
+                      border: `1px solid ${p.color}30`
+                    }}
+                  >
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            {isSuggestionAuthor && (
+              <span style={{ 
+                background: '#4f46e520', 
+                color: '#818cf8', 
+                padding: '2px 8px', 
+                borderRadius: '12px', 
+                fontSize: '0.65rem', 
+                fontWeight: 600, 
+                border: '1px solid #4f46e530',
+                marginLeft: '6px'
+              }}>
+                Автор
+              </span>
+            )}
+            {isCommentUserGlobalAdmin && <span className="detail-author-badge badge-admin">Админ</span>}
           </div>
-          <time className="comment-date" dateTime={comment.created}>
-            {new Date(comment.created).toLocaleDateString('ru-RU', {
-              day: 'numeric',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </time>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <time className="comment-date" dateTime={comment.created}>
+              {new Date(comment.created).toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </time>
+            {canDelete && (
+              <button 
+                onClick={handleDelete}
+                className="comment-delete-btn"
+                title="Удалить комментарий"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
         
-        <p className="comment-text">{comment.text}</p>
+        {isEditing ? (
+          <form onSubmit={handleEditSubmit} style={{ marginTop: '8px', marginBottom: '12px' }}>
+            <input
+              autoFocus
+              className="comment-input"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '8px 12px',
+                color: 'white',
+                fontSize: '0.9rem',
+                marginBottom: '8px'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button type="submit" className="comment-send small" disabled={isUpdating}>
+                {isUpdating ? '...' : 'Сохранить'}
+              </button>
+              <button type="button" className="comment-cancel small" onClick={() => setIsEditing(false)}>
+                Отмена
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="comment-text">{comment.text}</p>
+        )}
         
         <div className="comment-actions">
           <div className="comment-votes">
@@ -148,14 +286,26 @@ export default function CommentItem({ comment, allComments, authorId, user, user
             </button>
           </div>
 
-          {user && (
-            <button 
-              className="comment-reply-btn" 
-              onClick={() => setShowReply(!showReply)}
-            >
-              Ответить
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {user && (
+              <button 
+                className="comment-reply-btn" 
+                onClick={() => setShowReply(!showReply)}
+              >
+                Ответить
+              </button>
+            )}
+
+            {canEdit && !isEditing && (
+              <button 
+                className="comment-reply-btn" 
+                onClick={() => setIsEditing(true)}
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Изменить
+              </button>
+            )}
+          </div>
         </div>
 
         {showReply && (
@@ -187,11 +337,14 @@ export default function CommentItem({ comment, allComments, authorId, user, user
               key={reply.id} 
               comment={reply} 
               allComments={allComments}
-              authorId={authorId}
               user={user}
               userVotes={userVotes}
               onVote={onVote}
               onReply={onReply}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              workspaceRole={workspaceRole}
+              isAdmin={isAdmin}
               workspaceId={workspaceId}
             />
           ))}

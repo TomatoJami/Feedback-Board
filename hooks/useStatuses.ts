@@ -14,7 +14,7 @@ export function useStatuses(workspaceId?: string) {
   const fetchStatuses = useCallback(async () => {
     if (!workspaceId) return;
     try {
-      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
       realWorkspaceIdRef.current = workspaceRecord.id;
 
       // Check both ID (if Relation) and slug (if Text field legacy)

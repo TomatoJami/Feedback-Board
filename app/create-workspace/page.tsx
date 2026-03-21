@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { BuildingStorefrontIcon, LockClosedIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/lib/logger';
 
 function generateSlug(name: string) {
   return name
@@ -17,7 +18,7 @@ function generateSlug(name: string) {
 
 export default function CreateWorkspace() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -26,13 +27,49 @@ export default function CreateWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const isPro = user?.plan === 'pro';
+  const [checkingLimit, setCheckingLimit] = useState(true);
+
+  // Pre-emptive limit check
+  React.useEffect(() => {
+    async function checkLimit() {
+      if (!user) return;
+      if (user.plan === 'pro') {
+        setCheckingLimit(false);
+        return;
+      }
+
+      try {
+        const existing = await pb.collection('workspaces').getList(1, 1, {
+          filter: `owner = "${user.id}"`,
+          requestKey: null
+        });
+        if (existing.totalItems >= 1) {
+          router.push('/#pricing');
+        } else {
+          setCheckingLimit(false);
+        }
+      } catch (err) {
+        console.error('Limit check failed:', err);
+        setCheckingLimit(false);
+      }
+    }
+    checkLimit();
+  }, [user, router]);
+
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, authLoading, router]);
 
   // Handle name change and auto-generate slug
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
+    const oldName = name;
     setName(newName);
-    // Only auto-generate slug if it hasn't been manually edited heavily
-    if (!slug || slug === generateSlug(name.slice(0, -1))) {
+    
+    // Auto-generate slug if it's empty or perfectly matches the slug generated from the PREVIOUS name
+    if (!slug || slug === generateSlug(oldName)) {
       setSlug(generateSlug(newName));
     }
   };
@@ -108,12 +145,18 @@ export default function CreateWorkspace() {
       ));
 
       // Set default settings
-      const openStatus = createdStatuses.find((s: any) => s.name === 'Open');
-      await pb.collection('settings').create({
-        default_status: openStatus?.id || '',
-        deletable_statuses: [],
-        workspace_id: record.id
-      });
+      try {
+        const openStatus = createdStatuses.find((s: any) => s.name === 'Open');
+        await pb.collection('settings').create({
+          default_status: openStatus?.id || '',
+          deletable_statuses: [],
+          workspace_id: record.id
+        });
+      } catch (err) {
+        // Log error but don't fail the whole creation process
+        // Note: 'settings' collection rules might be too restrictive (e.g. admin only)
+        logger.warn('Failed to create default settings:', err);
+      }
 
       router.push(`/w/${record.slug || record.id}`);
     } catch (err: any) {
@@ -128,10 +171,11 @@ export default function CreateWorkspace() {
     }
   };
 
-  if (!user) {
+  if (authLoading || !user || checkingLimit) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="text-white">Пожалуйста, войдите в систему, чтобы создать пространство.</div>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+        <div className="text-zinc-400 animate-pulse">Проверка лимитов...</div>
       </div>
     );
   }

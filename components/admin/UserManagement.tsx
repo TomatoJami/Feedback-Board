@@ -5,19 +5,17 @@ import { CustomSelect, CustomMultiSelect } from './AdminUI';
 interface UserManagementProps {
   allUsers: any[];
   user: any;
-  prefixes: any[];
   isUpdatingUser: string | null;
-  onUpdateUserRole: (userId: string, newRole: string) => Promise<void>;
-  onUpdateUserPrefix: (userId: string, prefixIds: string[]) => Promise<void>;
+  onUpdateUserRole?: (userId: string, newRole: string) => Promise<void>;
+  showGlobalRole?: boolean;
 }
 
 export default function UserManagement({
   allUsers,
   user,
-  prefixes,
   isUpdatingUser,
   onUpdateUserRole,
-  onUpdateUserPrefix,
+  showGlobalRole = true,
 }: UserManagementProps) {
   return (
     <section style={{ marginBottom: '48px' }}>
@@ -30,9 +28,8 @@ export default function UserManagement({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
-              <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '50%' }}>Пользователь</th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '25%' }}>Роль</th>
-              <th style={{ padding: '14px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '25%' }}>Префикс</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: showGlobalRole ? '25%' : '50%' }}>Пользователь</th>
+              {showGlobalRole && <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '25%' }}>Роль</th>}
             </tr>
           </thead>
           <tbody>
@@ -56,29 +53,22 @@ export default function UserManagement({
                     </div>
                   </div>
                 </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <CustomSelect
-                    options={[
-                      { id: 'user', name: 'Пользователь', color: '#a1a1aa' },
-                      { id: 'admin', name: 'Админ', color: '#fbbf24' }
-                    ]}
-                    value={u.role || 'user'}
-                    onChange={(val) => onUpdateUserRole(u.id, val)}
-                    placeholder="Роль..."
-                    disabled={isUpdatingUser === u.id || u.id === user?.id}
-                    maxWidth="100%"
-                  />
-                </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                  <CustomMultiSelect
-                    options={prefixes.map(p => ({ id: p.id, name: p.name, color: p.color }))}
-                    selectedIds={u.prefixes || []}
-                    onChange={(vals) => onUpdateUserPrefix(u.id, vals)}
-                    placeholder="Префиксы..."
-                    disabled={isUpdatingUser === u.id}
-                  />
-                </td>
-              </tr>
+                {showGlobalRole && (
+                  <td style={{ padding: '14px 16px' }}>
+                    <CustomSelect
+                      options={[
+                        { id: 'user', name: 'Пользователь', color: '#a1a1aa' },
+                        { id: 'admin', name: 'Админ', color: '#fbbf24' }
+                      ]}
+                      value={u.role || 'user'}
+                      onChange={(val) => onUpdateUserRole?.(u.id, val)}
+                      placeholder="Роль..."
+                      disabled={isUpdatingUser === u.id || u.id === user?.id}
+                      maxWidth="100%"
+                    />
+                  </td>
+                )}
+                </tr>
             ))}
           </tbody>
         </table>

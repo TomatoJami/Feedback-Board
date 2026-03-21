@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'moderator' | null>(null);
 
   // Prefix management state
   const [prefixes, setPrefixes] = useState<any[]>([]);
@@ -69,9 +70,6 @@ export default function AdminPage() {
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowIconPicker(false);
-      }
       if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
         setShowColorPicker(false);
       }
@@ -85,30 +83,40 @@ export default function AdminPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      // First, get the actual workspace record using the slug to resolve relation fields properly
-      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+      // First, get the actual workspace record
+      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
       const realWorkspaceId = workspaceRecord.id;
       setActiveWorkspace(workspaceRecord);
 
       // Check admin status first
-      const memberCheck = await pb.collection('workspace_members').getList(1, 1, {
-        filter: `(workspace = "${realWorkspaceId}" || workspace = "${workspaceId}") && user = "${pb.authStore.record?.id}" && role = "admin"`,
-        requestKey: null,
-      });
-      if (memberCheck.totalItems === 0) {
-        // Allow global owner
-        if (pb.authStore.record?.global_role !== 'owner') {
-          router.push(`/w/${workspaceId}`);
-          return;
-        }
-      }
-      setIsWorkspaceAdmin(true);
+      const memberCheck = await pb.collection('workspace_members').getFirstListItem(
+        `(workspace = "${realWorkspaceId}" || workspace = "${workspaceId}") && user = "${pb.authStore.record?.id}"`,
+        { requestKey: null }
+      ).catch(() => null);
 
-      const [sgRecords, catRecords, statRecords, prefixRecords, userRecords, memberRecords] = await Promise.all([
+      let currentRole: 'admin' | 'moderator' | null = null;
+      if (memberCheck) {
+        currentRole = memberCheck.role as 'admin' | 'moderator';
+      }
+      
+      // Allow global owner
+      if (pb.authStore.record?.role === 'admin') {
+        currentRole = 'admin';
+      }
+
+      if (!currentRole) {
+        router.push(`/w/${workspaceId}`);
+        return;
+      }
+      
+      setUserRole(currentRole);
+      setIsWorkspaceAdmin(currentRole === 'admin' || currentRole === 'moderator');
+
+      const [sgRecords, catRecords, statRecords, prefixRecords, memberRecords] = await Promise.all([
         pb.collection('suggestions').getFullList<Suggestion>({
           filter: `workspace_id = "${realWorkspaceId}" || workspace_id = "${workspaceId}"`,
           sort: '-created',
-          expand: 'author.prefixes,category_id,status_id',
+          expand: 'author,category_id,status_id',
           requestKey: null,
         }),
         pb.collection('categories').getFullList<Category>({
@@ -125,13 +133,9 @@ export default function AdminPage() {
           filter: `workspace_id = "${realWorkspaceId}" || workspace_id = ""`,
           requestKey: null,
         }),
-        pb.collection('users').getFullList({
-          expand: 'prefixes',
-          requestKey: null,
-        }),
         pb.collection('workspace_members').getFullList({
           filter: `workspace = "${realWorkspaceId}" || workspace = "${workspaceId}"`,
-          expand: 'user',
+          expand: 'user,prefixes',
           requestKey: null,
         }),
       ]);
@@ -156,8 +160,8 @@ export default function AdminPage() {
       setCategories(catRecords);
       setStatuses(statRecords);
       setPrefixes(prefixRecords);
-      setAllUsers(userRecords);
       setMembers(memberRecords);
+      setAllUsers(memberRecords.map(m => m.expand?.user).filter(Boolean));
       setSettings(settingsRecord);
     } catch (err) {
       logger.error('Failed to fetch data:', err);
@@ -194,6 +198,28 @@ export default function AdminPage() {
       }
     } catch (err) {
       toast.error('Ошибка при обновлении статуса');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleAssigneeChange = async (id: string, userId: string | null) => {
+    setUpdatingId(id);
+    try {
+      await pb.collection('suggestions').update(id, { assigned_user: userId }, { requestKey: null });
+      setSuggestions((prev) => prev.map((s) => (s.id === id ? { ...s, assigned_user: userId } : s)));
+      toast.success('Исполнитель изменен');
+
+      if (userId) {
+        const suggestion = suggestions.find((s) => s.id === id);
+        await pb.collection('notifications').create({
+          user: userId,
+          message: `Вы назначены исполнителем для предложения: "${suggestion?.title}"`,
+          read: false
+        }, { requestKey: null });
+      }
+    } catch (err) {
+      toast.error('Ошибка при назначении исполнителя');
     } finally {
       setUpdatingId(null);
     }
@@ -302,58 +328,28 @@ export default function AdminPage() {
     }
   };
 
-  const handleUpdateUserPrefix = async (userId: string, prefixIds: string[]) => {
-    setIsUpdatingUser(userId);
+  const handleUpdateMemberPrefix = async (memberId: string, prefixIds: string[]) => {
     try {
-      // 1. Get current user record to see all their prefixes
-      const currentUserRecord = await pb.collection('users').getOne(userId, { requestKey: null });
-      const existingPrefixIds = currentUserRecord.prefixes || [];
-      
-      // 2. We need to know which existing prefixes belong to OTHER workspaces
-      // so we don't accidentally remove them.
-      // Fetch all prefixes for this user to check their workspace_id
-      let otherWorkspacePrefixIds: string[] = [];
-      if (existingPrefixIds.length > 0) {
-        const userPrefixes = await pb.collection('user_prefixes').getFullList({
-          filter: existingPrefixIds.map((id: string) => `id="${id}"`).join(' || '),
-          requestKey: null
-        });
-        
-        otherWorkspacePrefixIds = userPrefixes
-          .filter(p => p.workspace_id !== activeWorkspace.id && p.workspace_id !== "")
-          .map(p => p.id);
-      }
-        
-      // 3. Merge new prefix IDs with those from other workspaces
-      const finalPrefixIds = Array.from(new Set([...prefixIds, ...otherWorkspacePrefixIds]));
-      
-      await pb.collection('users').update(userId, { prefixes: finalPrefixIds });
-      const updatedUser = await pb.collection('users').getOne(userId, { expand: 'prefixes', requestKey: null });
-      setAllUsers((prev) => prev.map(u => u.id === userId ? updatedUser : u));
-      toast.success('Префиксы пользователя обновлены');
+      await pb.collection('workspace_members').update(memberId, { prefixes: prefixIds });
+      const updatedMember = await pb.collection('workspace_members').getOne(memberId, { expand: 'user,prefixes', requestKey: null });
+      setMembers((prev) => prev.map(m => m.id === memberId ? updatedMember : m));
+      toast.success('Префиксы участника обновлены');
     } catch (err) {
-      toast.error('Ошибка при обновлении');
-    } finally {
-      setIsUpdatingUser(null);
+      toast.error('Ошибка при обновлении префиксов');
     }
   };
 
-  const handleUpdateUserRole = async (userId: string, newRole: string) => {
-    if (userId === user?.id) {
-      toast.error('Вы не можете изменить свою роль');
-      return;
+
+
+  useEffect(() => {
+    if (!authLoading && !loading) {
+      if (!user) {
+        router.push('/auth/login');
+      } else if (!isWorkspaceAdmin) {
+        router.push(`/w/${workspaceId}`);
+      }
     }
-    setIsUpdatingUser(userId);
-    try {
-      await pb.collection('users').update(userId, { role: newRole });
-      setAllUsers((prev) => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      toast.success('Роль обновлена');
-    } catch (err) {
-      toast.error('Ошибка при обновлении роли');
-    } finally {
-      setIsUpdatingUser(null);
-    }
-  };
+  }, [user, authLoading, isWorkspaceAdmin, loading, router, workspaceId]);
 
   if (authLoading || loading) {
     return (
@@ -367,7 +363,7 @@ export default function AdminPage() {
   if (!user || !isWorkspaceAdmin) return null;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div style={{ paddingBottom: '60px', position: 'relative' }}>
       <button
         onClick={() => router.back()}
         className="fixed left-4 md:left-8 w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center cursor-pointer transition-all"
@@ -399,41 +395,47 @@ export default function AdminPage() {
 
       <AdminHeader />
 
-      <PlatformSettings
-        settings={settings}
-        statuses={statuses}
-        isSavingSettings={isSavingSettings}
-        onUpdateSettings={handleUpdateSettings}
-      />
+      {userRole === 'admin' && (
+        <PlatformSettings
+          settings={settings}
+          statuses={statuses}
+          isSavingSettings={isSavingSettings}
+          onUpdateSettings={handleUpdateSettings}
+        />
+      )}
 
-      <CategoryManagement
-        categories={categories}
-        newCatName={newCatName}
-        setNewCatName={setNewCatName}
-        newCatIcon={newCatIcon}
-        setNewCatIcon={setNewCatIcon}
-        showIconPicker={showIconPicker}
-        setShowIconPicker={setShowIconPicker}
-        isAddingCat={isAddingCat}
-        onAddCategory={handleAddCategory}
-        onDeleteCategory={handleDeleteCategory}
-        pickerRef={pickerRef}
-      />
+      {userRole === 'admin' && (
+        <CategoryManagement
+          categories={categories}
+          newCatName={newCatName}
+          setNewCatName={setNewCatName}
+          newCatIcon={newCatIcon}
+          setNewCatIcon={setNewCatIcon}
+          showIconPicker={showIconPicker}
+          setShowIconPicker={setShowIconPicker}
+          isAddingCat={isAddingCat}
+          onAddCategory={handleAddCategory}
+          onDeleteCategory={handleDeleteCategory}
+          pickerRef={pickerRef}
+        />
+      )}
 
-      <StatusManagement
-        statuses={statuses}
-        newStatName={newStatName}
-        setNewStatName={setNewStatName}
-        newStatColor={newStatColor}
-        setNewStatColor={setNewStatColor}
-        showColorPicker={showColorPicker}
-        setShowColorPicker={setShowColorPicker}
-        isAddingStat={isAddingStat}
-        onAddStatus={handleAddStatus}
-        onDeleteStatus={handleDeleteStatus}
-        colorPickerRef={colorPickerRef}
-        statusColors={STATUS_COLORS}
-      />
+      {userRole === 'admin' && (
+        <StatusManagement
+          statuses={statuses}
+          newStatName={newStatName}
+          setNewStatName={setNewStatName}
+          newStatColor={newStatColor}
+          setNewStatColor={setNewStatColor}
+          showColorPicker={showColorPicker}
+          setShowColorPicker={setShowColorPicker}
+          isAddingStat={isAddingStat}
+          onAddStatus={handleAddStatus}
+          onDeleteStatus={handleDeleteStatus}
+          colorPickerRef={colorPickerRef}
+          statusColors={STATUS_COLORS}
+        />
+      )}
 
       <PrefixManagement
         prefixes={prefixes}
@@ -448,22 +450,24 @@ export default function AdminPage() {
         onDeletePrefix={handleDeletePrefix}
         prefixColorPickerRef={prefixColorPickerRef}
         statusColors={STATUS_COLORS}
+        isReadOnly={userRole === 'moderator'}
       />
 
       <UserManagement
         allUsers={allUsers}
         user={user}
-        prefixes={prefixes}
         isUpdatingUser={isUpdatingUser}
-        onUpdateUserRole={handleUpdateUserRole}
-        onUpdateUserPrefix={handleUpdateUserPrefix}
+        showGlobalRole={false}
       />
 
       <WorkspaceMemberManagement
         workspaceId={activeWorkspace?.id || workspaceId}
         members={members}
+        prefixes={prefixes}
         currentUser={user}
         onMembersUpdated={fetchData}
+        onUpdateMemberPrefix={handleUpdateMemberPrefix}
+        isPublic={!activeWorkspace?.isPrivate}
       />
 
       <SuggestionManagement
@@ -471,9 +475,11 @@ export default function AdminPage() {
         statuses={statuses}
         updatingId={updatingId}
         onStatusChange={handleStatusChange}
+        onAssigneeChange={handleAssigneeChange}
+        members={members}
       />
       
-      {activeWorkspace && <WorkspaceDangerZone workspace={activeWorkspace} />}
+      {activeWorkspace && userRole === 'admin' && <WorkspaceDangerZone workspace={activeWorkspace} />}
     </div>
   );
 }

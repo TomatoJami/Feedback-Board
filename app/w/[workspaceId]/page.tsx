@@ -4,8 +4,9 @@ import React, { Suspense, useState, useMemo } from 'react';
 import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
 import { useCategories } from '@/hooks/useCategories';
 import { useStatuses } from '@/hooks/useStatuses';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import pb, { POCKETBASE_URL } from '@/lib/pocketbase';
 import SuggestionCard from '@/components/SuggestionCard';
 import HomeHeader from '@/components/HomeHeader';
 import FilterSection from '@/components/FilterSection';
@@ -14,24 +15,36 @@ import EmptyState from '@/components/EmptyState';
 type CategoryFilter = 'All' | 'Mine' | string; // id of category
 type StatusFilter = 'All' | string; // id or standard value
 
-const STATUS_COLORS: Record<string, string> = {
-  Open: '#3b82f6',
-  Planned: '#a855f7',
-  In_Progress: '#f59e0b',
-  Completed: '#10b981',
-};
 
 function HomeContent() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.workspaceId as string;
 
   const { suggestions, isLoading: suggestionsLoading } = useRealtimeSuggestions(workspaceId);
   const { categories, isLoading: categoriesLoading } = useCategories(workspaceId);
   const { statuses, isLoading: statusesLoading } = useStatuses(workspaceId);
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [categoryId, setCategoryId] = useState<CategoryFilter>('All');
   const [status, setStatus] = useState<StatusFilter>('All');
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  React.useEffect(() => {
+    async function checkAccess() {
+      try {
+        await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+        setCheckingAccess(false);
+      } catch (err: any) {
+        if (!user) {
+          router.push('/auth/login');
+        } else {
+          router.push('/');
+        }
+      }
+    }
+    if (!authLoading) checkAccess();
+  }, [workspaceId, user, authLoading, router]);
 
   const filteredSuggestions = useMemo(() => {
     return suggestions.filter((s) => {
@@ -42,7 +55,7 @@ function HomeContent() {
       // Determine the effective status for filtering
       const suggestionEffectiveStatus = s.status_id
         ? s.status_id
-        : (s.status && s.status.toLowerCase() !== 'open' ? s.status : 'None');
+        : (s.status && s.status !== 'Open' ? s.status : 'None');
 
       const statusMatch = status === 'All' || suggestionEffectiveStatus === status;
         
@@ -51,7 +64,7 @@ function HomeContent() {
   }, [suggestions, categoryId, status, user]);
 
   const isMine = categoryId === 'Mine';
-  const isLoading = suggestionsLoading || categoriesLoading || statusesLoading;
+  const isLoading = suggestionsLoading || categoriesLoading || statusesLoading || checkingAccess;
 
   if (isLoading) {
     return (
@@ -65,7 +78,7 @@ function HomeContent() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-8">
+    <div className="w-full flex flex-col gap-12">
       <HomeHeader isMine={isMine} />
 
       <FilterSection
@@ -76,7 +89,6 @@ function HomeContent() {
         categories={categories}
         statuses={statuses}
         user={user}
-        statusColors={STATUS_COLORS}
       />
 
       <div className="suggestions-list grid gap-6">
@@ -84,7 +96,7 @@ function HomeContent() {
           <EmptyState isMine={isMine} />
         ) : (
           filteredSuggestions.map((suggestion) => (
-            <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+            <SuggestionCard key={suggestion.id} suggestion={suggestion} workspaceSlug={workspaceId} />
           ))
         )}
       </div>

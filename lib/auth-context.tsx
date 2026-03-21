@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { logger } from './logger';
 import type { User } from '@/types';
@@ -37,7 +37,9 @@ function mapAuthRecord(record: AuthRecord | null): User | null {
     email: record.email ?? '',
     name: record.name ?? '',
     avatar: record.avatar ?? '',
-    role: (record as unknown as Record<string, string>).role ?? 'user',
+    role: (record as any).role ?? 'user',
+    status: (record as any).status ?? 'active',
+    plan: (record as any).plan ?? 'free',
     created: record.created,
     updated: record.updated,
   };
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const isLoggingOut = useRef(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const syncCookie = useCallback(() => {
     if (typeof document !== 'undefined') {
@@ -59,7 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           record: {
             id: pb.authStore.record.id,
             collectionId: pb.authStore.record.collectionId,
-            role: (pb.authStore.record as unknown as Record<string, string>).role ?? 'user',
+            role: (pb.authStore.record as any).role ?? 'user',
+            status: (pb.authStore.record as any).status ?? 'active',
+            plan: (pb.authStore.record as any).plan ?? 'free',
           },
         });
         document.cookie = `pb_auth=${encodeURIComponent(minimalData)}; path=/; SameSite=Lax; max-age=2592000`;
@@ -117,7 +122,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncCookie();
       toast.success('С возвращением!');
     } catch (err: any) {
-      toast.error('Ошибка входа');
+      if (err?.status === 400) {
+        toast.error('Неправильный email или пароль');
+      } else {
+        toast.error('Ошибка входа');
+      }
       throw err;
     }
   }, [syncCookie]);
@@ -127,6 +136,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await pb.collection('users').authWithOAuth2({ 
         provider: 'oidc',
         requestKey: null,
+        createData: {
+          role: 'user',
+          status: 'active',
+          plan: 'free',
+          emailVisibility: true,
+        }
       });
       syncCookie();
     } catch (err) {
@@ -142,12 +157,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         passwordConfirm,
+        emailVisibility: true,
+        role: 'user',
+        status: 'active',
+        plan: 'free',
       });
       await pb.collection('users').authWithPassword(email, password);
       syncCookie();
       toast.success('Регистрация успешна!');
     } catch (err: any) {
-      toast.error('Ошибка регистрации');
+      if (err?.status === 400) {
+        toast.error('Некорректные данные или пользователь уже существует');
+      } else {
+        toast.error('Ошибка регистрации');
+      }
       throw err;
     }
   }, [syncCookie]);
@@ -167,6 +190,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const isAdmin = user?.role === 'admin';
+
+  // Handle blocked user redirection
+  useEffect(() => {
+    if (isLoading) return;
+    
+    if (user?.status === 'blocked') {
+      if (pathname !== '/blocked') {
+        router.replace('/blocked');
+      }
+    } else if (pathname === '/blocked') {
+      // If not blocked but on /blocked page, go home
+      router.replace('/');
+    }
+  }, [user, isLoading, router, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, isLoading, loginWithPassword, loginWithOAuth, register, logout }}>

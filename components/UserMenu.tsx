@@ -65,6 +65,22 @@ export default function UserMenu() {
 
       {open && (
         <div className="user-dropdown">
+          {(!user.plan || user.plan === 'free') && (
+            <Link 
+              href="/auth/settings"
+              onClick={() => setOpen(false)}
+              className="m-2 p-3 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-white/5 hover:border-indigo-500/30 transition-all group/banner relative overflow-hidden block"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 opacity-0 group-hover/banner:opacity-100 transition-opacity" />
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400">Pro Plan</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500 text-white font-bold leading-none transform group-hover/banner:scale-110 transition-transform">Get 20% Off</span>
+              </div>
+              <div className="text-[13px] font-bold text-white mb-0.5 group-hover/banner:text-indigo-300 transition-colors">Улучшить до Pro</div>
+              <div className="text-[11px] text-zinc-500 leading-tight">Разблокируйте приватные доски и кастомные роли</div>
+            </Link>
+          )}
+
           <div className="user-dropdown-header">
             <div className="user-dropdown-avatar" style={{ 
               background: user.avatar ? 'transparent' : color,

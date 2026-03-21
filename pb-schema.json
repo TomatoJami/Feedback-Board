@@ -173,10 +173,10 @@
   },
   {
     "id": "_pb_users_auth_",
-    "listRule": "",
-    "viewRule": "",
+    "listRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "viewRule": "@request.auth.id = '' || @request.auth.status != 'blocked'",
     "createRule": "",
-    "updateRule": "id = @request.auth.id || @request.auth.role = 'admin'",
+    "updateRule": "id = @request.auth.id || @request.auth.role = 'admin' || (@collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator'))",
     "deleteRule": "id = @request.auth.id || @request.auth.role = 'admin'",
     "name": "users",
     "type": "auth",
@@ -319,19 +319,7 @@
         "system": false,
         "type": "autodate"
       },
-      {
-        "cascadeDelete": false,
-        "collectionId": "user_prefixes_pb",
-        "hidden": false,
-        "id": "user_pref_rel_0",
-        "maxSelect": 10,
-        "minSelect": 0,
-        "name": "prefixes",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
-      },
+
       {
         "hidden": false,
         "id": "usr_plan_1773954589911",
@@ -348,16 +336,16 @@
       },
       {
         "hidden": false,
-        "id": "usr_gr_1773954589911",
+        "id": "usr_status_id_177",
         "maxSelect": 1,
-        "name": "global_role",
+        "name": "status",
         "presentable": false,
         "required": false,
         "system": false,
         "type": "select",
         "values": [
-          "user",
-          "owner"
+          "active",
+          "blocked"
         ]
       }
     ],
@@ -832,9 +820,9 @@
     "id": "categories_coll_id",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "categories",
     "type": "base",
     "fields": [
@@ -915,7 +903,7 @@
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_unique_cat_name` ON `categories` (`name`)"
+      "CREATE UNIQUE INDEX `idx_unique_cat_name_ws` ON `categories` (`name`, `workspace_id`)"
     ],
     "system": false
   },
@@ -1011,11 +999,11 @@
   },
   {
     "id": "comments_coll_id",
-    "listRule": "id != ''",
-    "viewRule": "id != ''",
-    "createRule": "@request.auth.id != '' && user = @request.auth.id",
-    "updateRule": "user = @request.auth.id || @request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+    "listRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.status != 'blocked'",
+    "updateRule": "(user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "comments",
     "type": "base",
     "fields": [
@@ -1238,9 +1226,9 @@
     "id": "pbc_settings_100",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": null,
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "settings",
     "type": "base",
     "fields": [
@@ -1318,16 +1306,18 @@
         "type": "relation"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_unique_settings_ws` ON `settings` (`workspace_id`)"
+    ],
     "system": false
   },
   {
     "id": "statuses_coll_id",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "statuses",
     "type": "base",
     "fields": [
@@ -1408,17 +1398,17 @@
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_unique_stat_name` ON `statuses` (`name`)"
+      "CREATE UNIQUE INDEX `idx_unique_stat_name_ws` ON `statuses` (`name`, `workspace_id`)"
     ],
     "system": false
   },
   {
     "id": "sgstns_coll_id",
-    "listRule": "is_public = true || @request.auth.id != ''",
-    "viewRule": "is_public = true || @request.auth.id != ''",
-    "createRule": "@request.auth.id != ''",
-    "updateRule": "author = @request.auth.id || @request.auth.role = 'admin'",
-    "deleteRule": "(@request.auth.role = 'admin') || (author = @request.auth.id && status = 'Open')",
+    "listRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "updateRule": "(author = @request.auth.id || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(author = @request.auth.id && (status = 'Open' || status_id.name = 'Open' || status_id = '') || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "suggestions",
     "type": "base",
     "fields": [
@@ -1597,9 +1587,9 @@
     "id": "user_prefixes_pb",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "user_prefixes",
     "type": "base",
     "fields": [
@@ -1684,11 +1674,11 @@
   },
   {
     "id": "votes_coll_id",
-    "listRule": "@request.auth.id != ''",
-    "viewRule": "@request.auth.id != ''",
-    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != suggestion.author",
+    "listRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "viewRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != suggestion.author && @request.auth.status != 'blocked'",
     "updateRule": null,
-    "deleteRule": "@request.auth.id != '' && user = @request.auth.id",
+    "deleteRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.status != 'blocked'",
     "name": "votes",
     "type": "base",
     "fields": [
@@ -1774,11 +1764,11 @@
   },
   {
     "id": "pbc_7982372053",
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": "",
-    "deleteRule": "",
+    "listRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "updateRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "workspaces",
     "type": "base",
     "fields": [
@@ -1874,11 +1864,11 @@
   },
   {
     "id": "pbc_536962552",
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": "",
-    "deleteRule": "",
+    "listRule": "@request.auth.id != '' && (workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin')",
+    "viewRule": "(workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "createRule": "@request.auth.id != '' && (workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "updateRule": "(workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "workspace_members",
     "type": "base",
     "fields": [
@@ -1933,8 +1923,22 @@
         "type": "select",
         "values": [
           "admin",
-          "moderator"
+          "moderator",
+          "user"
         ]
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "user_prefixes_pb",
+        "hidden": false,
+        "id": "wm_pref_rel_0",
+        "maxSelect": 10,
+        "minSelect": 0,
+        "name": "prefixes",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       },
       {
         "hidden": false,

@@ -6,11 +6,7 @@ export interface User extends RecordModel {
   email: string;
   name: string;
   avatar: string;
-  role?: string;
-  global_role?: 'user' | 'owner';
+  role: 'user' | 'admin';
+  status: 'active' | 'blocked';
   plan?: 'free' | 'pro';
-  prefixes?: string[];
-  expand?: {
-    prefixes?: UserPrefix[];
-  };
 }

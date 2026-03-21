@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Category, Status, SuggestionStatus } from '@/types';
+import type { Category, Status } from '@/types';
 
 interface FilterSectionProps {
   categoryId: string;
@@ -9,7 +9,6 @@ interface FilterSectionProps {
   categories: Category[];
   statuses: Status[];
   user: any;
-  statusColors: Record<string, string>;
 }
 
 export default function FilterSection({
@@ -19,8 +18,7 @@ export default function FilterSection({
   setStatus,
   categories,
   statuses,
-  user,
-  statusColors
+  user
 }: FilterSectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -68,20 +66,6 @@ export default function FilterSection({
           <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#6b7280', marginRight: '6px', flexShrink: 0 }} />
           Без статуса
         </button>
-        
-        {/* Standard Statuses */}
-        {(['Open', 'Planned', 'In_Progress', 'Completed'] as SuggestionStatus[])
-          .filter(std => !statuses.some(ds => ds.name === std.replace('_', ' ')))
-          .map((s) => (
-          <button
-            key={s}
-            className={`filter-chip ${status === s ? 'active' : ''}`}
-            onClick={() => setStatus(s)}
-          >
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: statusColors[s] || '#6b7280', marginRight: '6px', flexShrink: 0 }} />
-            {s.replace('_', ' ')}
-          </button>
-        ))}
         
         {/* Dynamic Statuses */}
         {statuses.map((s) => (

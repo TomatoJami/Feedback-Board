@@ -17,7 +17,7 @@ export default function WorkspaceDangerZone({ workspace }: WorkspaceDangerZonePr
   const [passwordInput, setPasswordInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isOwner = user?.id === workspace?.owner || user?.global_role === 'owner';
+  const isOwner = user?.id === workspace?.owner || user?.role === 'admin';
 
   if (!isOwner) return null; // Only workspace owners or global owners can delete the workspace
 

@@ -37,10 +37,23 @@ export default function NewSuggestionPage() {
     const fetchSettings = async () => {
       try {
         const records = await pb.collection('settings').getFullList<Settings>({ 
+          filter: `workspace_id = "${workspaceId}" || workspace_id.slug = "${workspaceId}"`,
           limit: 1,
           requestKey: null
         });
-        if (records.length > 0) setSettings(records[0]);
+        if (records.length > 0) {
+          setSettings(records[0]);
+        } else {
+          // Fallback: try to find the "Open" status for this workspace
+          const openStatus = await pb.collection('statuses').getFirstListItem(
+            `(workspace_id = "${workspaceId}" || workspace_id.slug = "${workspaceId}") && name = "Open"`,
+            { requestKey: null }
+          ).catch(() => null);
+          
+          if (openStatus) {
+            setSettings({ default_status: openStatus.id } as Settings);
+          }
+        }
       } catch (err) {
         logger.error('Failed to fetch settings:', err);
       }
@@ -107,11 +120,13 @@ export default function NewSuggestionPage() {
     }
   };
 
-  if (authLoading || categoriesLoading) return null;
-  if (!user) {
-    router.push('/auth/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || categoriesLoading || !user) return null;
 
   return (
     <div className="w-full flex justify-center py-6 sm:py-12">
