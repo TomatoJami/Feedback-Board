@@ -5,8 +5,10 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-black/40 border-t border-white/5 pt-8 pb-0 relative z-10 backdrop-blur-2xl">
-      <div className="max-w-6xl mx-auto px-6">
+    <footer className="w-full relative z-10 pt-8 pb-8">
+      {/* Full-width background breakout using absolute positioning to avoid layout shifts */}
+      <div className="absolute inset-0 w-[100vw] left-[50%] -translate-x-1/2 bg-black/40 border-t border-white/5 backdrop-blur-2xl -z-10" />
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="flex flex-col items-center text-center mb-10">
           <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed font-medium max-w-3xl opacity-40 select-none italic">
             "Современная платформа для сбора и управления обратной связью. Помогаем продуктам расти вместе с пользователями."

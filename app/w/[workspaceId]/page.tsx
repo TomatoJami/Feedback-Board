@@ -37,7 +37,7 @@ function HomeContent() {
     async function checkAccess() {
       try {
         const ws = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
-        
+
         if (user) {
           const member = await pb.collection('workspace_members').getFirstListItem(
             `workspace = "${ws.id}" && user = "${user.id}"`,
@@ -45,7 +45,7 @@ function HomeContent() {
           ).catch(() => null);
           if (member) setUserRole(member.role as any);
         }
-        
+
         setCheckingAccess(false);
       } catch (err: any) {
         if (!user) {
@@ -63,10 +63,10 @@ function HomeContent() {
       const categoryMatch =
         categoryId === 'All' ||
         (categoryId === 'Mine' ? (user && s.author === user.id) : s.category_id === categoryId);
-      
+
       const suggestionEffectiveStatus = s.status_id || 'None';
       const statusMatch = status === 'All' || suggestionEffectiveStatus === status;
-        
+
       return categoryMatch && statusMatch;
     });
 
@@ -120,9 +120,9 @@ function HomeContent() {
 
       <div className="suggestions-list grid gap-6">
         {filteredSuggestions.length === 0 ? (
-          <EmptyState 
-            isMine={isMine} 
-            isAdmin={userRole === 'admin' || user?.role === 'admin'} 
+          <EmptyState
+            isMine={isMine}
+            isAdmin={userRole === 'admin' || user?.role === 'admin'}
             workspaceSlug={workspaceId}
           />
         ) : (

@@ -38,8 +38,8 @@ export default function GlobalHome() {
   // If NOT logged in, show the Landing Page
   if (!user) {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-start overflow-hidden antialiased">
-        <div className="relative z-10 w-full flex flex-col items-center pt-24 pb-2 px-6 gap-16 text-zinc-400">
+      <div className="relative min-h-screen flex flex-col items-center justify-start antialiased">
+        <div className="relative z-10 w-full flex flex-col items-center pt-24 pb-16 px-6 gap-16 text-zinc-400">
           <Reveal delay={0.1}><Hero /></Reveal>
           <Reveal delay={0.2}><Features /></Reveal>
           <Reveal delay={0.3}><LivePreview /></Reveal>
@@ -47,10 +47,10 @@ export default function GlobalHome() {
           <Reveal delay={0.5}><Pricing /></Reveal>
           <Reveal delay={0.6}><FAQ /></Reveal>
           <Reveal delay={0.7}><CTA /></Reveal>
-          <div className="w-full flex flex-col items-center gap-0">
-            <div className="w-full max-w-7xl mx-auto px-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
-            <LandingFooter />
-          </div>
+        </div>
+        <div className="w-full flex flex-col items-center gap-0 relative z-10">
+          <div className="w-full max-w-7xl mx-auto px-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
+          <LandingFooter />
         </div>
       </div>
     );
