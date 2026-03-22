@@ -61,6 +61,13 @@ export async function POST(req: Request) {
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             const priceId = subscription.items.data[0].price.id;
 
+            // Format date for PB: YYYY-MM-DD HH:MM:SS
+            const endDate = (subscription as any).current_period_end 
+              ? new Date((subscription as any).current_period_end * 1000).toISOString().replace('T', ' ').split('.')[0]
+              : null;
+
+            console.log('Updating PB User with date:', endDate);
+
             const planType = 'pro'; // Default to pro for now
 
             console.log(`Updating user ${session.client_reference_id} to ${planType} plan...`);
@@ -69,9 +76,7 @@ export async function POST(req: Request) {
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
               stripe_price_id: priceId,
-              stripe_current_period_end: (subscription as any).current_period_end 
-                ? new Date((subscription as any).current_period_end * 1000).toISOString() 
-                : null,
+              stripe_current_period_end: endDate,
               plan: planType,
             });
             
@@ -95,13 +100,18 @@ export async function POST(req: Request) {
           const priceId = subscription.items.data[0].price.id;
           const planType = 'pro';
 
+          // Format date for PB: YYYY-MM-DD HH:MM:SS
+          const endDate = (subscription as any).current_period_end
+            ? new Date((subscription as any).current_period_end * 1000).toISOString().replace('T', ' ').split('.')[0]
+            : null;
+          
+          console.log('Updating PB User with date:', endDate);
+
           if (subscription.status === 'active' || subscription.status === 'trialing') {
             await pb.collection('users').update(record.id, {
               stripe_subscription_id: subscription.id,
               stripe_price_id: priceId,
-              stripe_current_period_end: (subscription as any).current_period_end
-                ? new Date((subscription as any).current_period_end * 1000).toISOString()
-                : null,
+              stripe_current_period_end: endDate,
               plan: planType,
             });
             console.log(`Updated subscription for user ${record.id}`);
