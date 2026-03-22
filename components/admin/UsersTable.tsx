@@ -1,12 +1,15 @@
+import Image from 'next/image';
 import React, { useState } from 'react';
-import pb from '@/lib/pocketbase';
 import toast from 'react-hot-toast';
+
 import { CustomSelect } from '@/components/admin/AdminUI';
+import pb from '@/lib/pocketbase';
+import type { User } from '@/types';
 
 interface UsersTableProps {
-    users: any[];
-    setUsers: React.Dispatch<React.SetStateAction<any[]>>;
-    currentUser: any;
+    users: User[];
+    setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+    currentUser: User | null;
 }
 
 export default function UsersTable({ users, setUsers, currentUser }: UsersTableProps) {
@@ -19,9 +22,9 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
         setIsUpdatingUser(uId);
         try {
             await pb.collection('users').update(uId, { plan: newPlan });
-            setUsers(prev => prev.map(u => u.id === uId ? { ...u, plan: newPlan } : u));
+            setUsers(prev => prev.map(u => u.id === uId ? { ...u, plan: newPlan as 'free' | 'pro' } : u));
             toast.success('Тариф пользователя обновлен');
-        } catch (err) {
+        } catch (__err) {
             toast.error('Ошибка при обновлении тарифа');
         } finally {
             setIsUpdatingUser(null);
@@ -36,9 +39,9 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
         setIsUpdatingUser(uId);
         try {
             await pb.collection('users').update(uId, { role: newRole });
-            setUsers(prev => prev.map(u => u.id === uId ? { ...u, role: newRole } : u));
+            setUsers(prev => prev.map(u => u.id === uId ? { ...u, role: newRole as 'user' | 'admin' } : u));
             toast.success('Роль пользователя обновлена');
-        } catch (err) {
+        } catch (__err) {
             toast.error('Ошибка при обновлении роли');
         } finally {
             setIsUpdatingUser(null);
@@ -49,9 +52,9 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
         setIsUpdatingUser(uId);
         try {
             await pb.collection('users').update(uId, { status: newStatus });
-            setUsers(prev => prev.map(u => u.id === uId ? { ...u, status: newStatus } : u));
+            setUsers(prev => prev.map(u => u.id === uId ? { ...u, status: newStatus as 'active' | 'blocked' } : u));
             toast.success('Статус пользователя обновлен');
-        } catch (err) {
+        } catch (__err) {
             toast.error('Ошибка при обновлении статуса');
         } finally {
             setIsUpdatingUser(null);
@@ -126,8 +129,14 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                         <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, overflow: 'hidden' }}>
                                                             {u.avatar ? (
-                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                <img src={`${pb.baseUrl}/api/files/users/${u.id}/${u.avatar}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                <Image 
+                                                                    src={`${pb.baseUrl}/api/files/users/${u.id}/${u.avatar}`} 
+                                                                    alt={u.name || 'User Avatar'} 
+                                                                    width={40}
+                                                                    height={40}
+                                                                    unoptimized
+                                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                                />
                                                             ) : (u.name || u.email || '?').charAt(0).toUpperCase()}
                                                         </div>
                                                         <div style={{ minWidth: 0 }}>

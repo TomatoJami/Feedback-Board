@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
+
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AppToaster() {
   const { user } = useAuth();

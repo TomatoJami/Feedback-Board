@@ -1,4 +1,5 @@
 import { RecordModel } from 'pocketbase';
+
 import type { User } from '@/types/user';
 
 
@@ -11,7 +12,7 @@ export interface SuggestionComment extends RecordModel {
   downvotes?: number;
   expand?: {
     user?: User;
-    workspace_id?: any;
+    workspace_id?: string;
   };
   workspace_id?: string;
 }

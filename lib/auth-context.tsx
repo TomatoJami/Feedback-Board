@@ -1,12 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import toast from 'react-hot-toast';
-import { useRouter, usePathname } from 'next/navigation';
-import pb from '@/lib/pocketbase';
-import { logger } from './logger';
-import type { User } from '@/types';
+import { usePathname,useRouter } from 'next/navigation';
 import type { AuthRecord } from 'pocketbase';
+import React, { createContext, useCallback, useContext, useEffect, useRef,useState } from 'react';
+import toast from 'react-hot-toast';
+
+import pb from '@/lib/pocketbase';
+import type { User } from '@/types';
+
+import { logger } from './logger';
 
 interface AuthContextType {
   user: User | null;
@@ -37,9 +39,9 @@ function mapAuthRecord(record: AuthRecord | null): User | null {
     email: record.email ?? '',
     name: record.name ?? '',
     avatar: record.avatar ?? '',
-    role: (record as any).role ?? 'user',
-    status: (record as any).status ?? 'active',
-    plan: (record as any).plan ?? 'free',
+    role: (record as unknown as User).role ?? 'user',
+    status: (record as unknown as User).status ?? 'active',
+    plan: (record as unknown as User).plan ?? 'free',
     created: record.created,
     updated: record.updated,
   };
@@ -62,9 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           record: {
             id: pb.authStore.record.id,
             collectionId: pb.authStore.record.collectionId,
-            role: (pb.authStore.record as any).role ?? 'user',
-            status: (pb.authStore.record as any).status ?? 'active',
-            plan: (pb.authStore.record as any).plan ?? 'free',
+            role: (pb.authStore.record as unknown as User).role ?? 'user',
+            status: (pb.authStore.record as unknown as User).status ?? 'active',
+            plan: (pb.authStore.record as unknown as User).plan ?? 'free',
           },
         });
         document.cookie = `pb_auth=${encodeURIComponent(minimalData)}; path=/; SameSite=Lax; max-age=2592000`;
@@ -88,10 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setUser(null);
         }
-      } catch (err: any) {
-        // Only clear auth if the server explicitly rejected the token (401)
-        // Any other error (network, abort, hard refresh) → keep cached session
-        if (err?.status === 401) {
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && err.status === 401) {
           pb.authStore.clear();
           setUser(null);
         } else {
@@ -121,8 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await pb.collection('users').authWithPassword(email, password);
       syncCookie();
       toast.success('С возвращением!');
-    } catch (err: any) {
-      if (err?.status === 400) {
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'status' in err && err.status === 400) {
         toast.error('Неправильный email или пароль');
       } else {
         toast.error('Ошибка входа');
@@ -134,9 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithOAuth = useCallback(async () => {
     try {
       const methods = await pb.collection('users').listAuthMethods();
-      console.log('Available auth methods in PB:', JSON.stringify(methods, null, 2));
+      logger.info(`Available auth methods in PB: ${JSON.stringify(methods, null, 2)}`);
 
-      console.log('Starting OAuth2 flow with provider: google');
+      logger.info('Starting OAuth2 flow with provider: google');
       const response = await pb.collection('users').authWithOAuth2({ 
         provider: 'google',
         requestKey: null,
@@ -147,10 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailVisibility: true,
         }
       });
-      console.log('OAuth2 response received:', response);
+      logger.info(`OAuth2 response received: ${JSON.stringify(response, null, 2)}`);
       syncCookie();
-    } catch (err: any) {
-      console.error('OAuth2 FULL ERROR details:', JSON.stringify(err, null, 2));
+    } catch (err: unknown) {
+      logger.error(`OAuth2 FULL ERROR details: ${JSON.stringify(err, null, 2)}`);
       logger.error('OAuth2 login failed:', err);
       throw err;
     }
@@ -171,8 +171,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await pb.collection('users').authWithPassword(email, password);
       syncCookie();
       toast.success('Регистрация успешна!');
-    } catch (err: any) {
-      if (err?.status === 400) {
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'status' in err && err.status === 400) {
         toast.error('Некорректные данные или пользователь уже существует');
       } else {
         toast.error('Ошибка регистрации');

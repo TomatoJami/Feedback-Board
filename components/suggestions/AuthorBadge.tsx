@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { getAvatarColor } from '@/lib/utils';
 

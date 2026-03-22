@@ -1,4 +1,5 @@
 import { RecordModel } from 'pocketbase';
+
 import type { User } from '@/types/user';
 
 export interface Workspace extends RecordModel {

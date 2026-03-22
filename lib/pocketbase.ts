@@ -1,4 +1,5 @@
 import PocketBase from 'pocketbase';
+
 import { logger } from './logger';
 
 const POCKETBASE_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL;

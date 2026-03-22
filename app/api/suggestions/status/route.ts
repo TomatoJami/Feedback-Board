@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import PocketBase from 'pocketbase';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { z } from 'zod';
+
 import { logger } from '@/lib/logger';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
+import type { User } from '@/types';
 
 const statusSchema = z.object({
   id: z.string().min(1),
@@ -32,7 +34,8 @@ export async function POST(request: Request) {
     // Verify the token by fetching the current user
     try {
       const authData = await pb.collection('users').authRefresh();
-      if ((authData.record as any).role !== 'admin') {
+      const record = authData.record as unknown as User;
+      if (record.role !== 'admin') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     } catch {

@@ -1,19 +1,8 @@
-import { NextResponse } from 'next/server';
-import { logger } from './lib/logger';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    // base64url → base64 → decode
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
+import { logger } from './lib/logger';
+
 
 export async function proxy(request: NextRequest) {
   const authCookie = request.cookies.get('pb_auth');

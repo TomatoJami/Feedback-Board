@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import React, { useEffect } from 'react';
+
 import ProfileSettingsForm from '@/components/settings/ProfileSettingsForm';
 import SubscriptionCard from '@/components/settings/SubscriptionCard';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();

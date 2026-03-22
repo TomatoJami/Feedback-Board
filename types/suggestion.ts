@@ -1,7 +1,8 @@
 import { RecordModel } from 'pocketbase';
-import type { User } from '@/types/user';
+
 import type { Category } from '@/types/category';
 import type { Status } from '@/types/status';
+import type { User } from '@/types/user';
 import type { Workspace } from '@/types/workspace';
 
 export interface Suggestion extends RecordModel {

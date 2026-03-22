@@ -1,4 +1,5 @@
 import React from 'react';
+
 import type { Category } from '@/types';
 
 const PREDEFINED_ICONS = [

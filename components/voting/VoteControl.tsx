@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useVote } from '@/hooks/useVote';
+
 import { useAuth } from '@/hooks/useAuth';
+import { useVote } from '@/hooks/useVote';
 
 interface VoteControlProps {
   suggestionId: string;

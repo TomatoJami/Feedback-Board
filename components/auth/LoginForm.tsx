@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useEffect,useState } from 'react';
+
 import PasswordField from '@/components/PasswordField';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginForm() {
   const { user, isLoading, loginWithPassword, loginWithOAuth } = useAuth();
@@ -28,11 +29,12 @@ export default function LoginForm() {
     try {
       await loginWithPassword(email, password);
       router.push('/');
-    } catch (err: any) {
-      if (err?.status === 400 || err?.message?.includes('authenticate')) {
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      if (error.status === 400 || error.message?.includes('authenticate')) {
         setError('Неправильный email или пароль');
       } else {
-        setError(err?.message || 'Ошибка входа');
+        setError(error.message || 'Ошибка входа');
       }
     } finally {
       setSubmitting(false);

@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import React from 'react';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
+
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 

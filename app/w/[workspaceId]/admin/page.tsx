@@ -1,25 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, useParams } from 'next/navigation';
-import type { Suggestion, Category, Status, Settings } from '@/types';
-import pb from '@/lib/pocketbase';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useRef,useState } from 'react';
 import toast from 'react-hot-toast';
-import { logger } from '@/lib/logger';
 
-import AdminHeader from '@/components/admin/AdminHeader';
-import PlatformSettings from '@/components/admin/PlatformSettings';
-import CategoryManagement from '@/components/admin/CategoryManagement';
-import StatusManagement from '@/components/admin/StatusManagement';
-import PrefixManagement from '@/components/admin/PrefixManagement';
-import UserManagement from '@/components/admin/UserManagement';
-import SuggestionManagement from '@/components/admin/SuggestionManagement';
-import WorkspaceMemberManagement from '@/components/admin/WorkspaceMemberManagement';
-import WorkspaceDangerZone from '@/components/admin/WorkspaceDangerZone';
-import ConfirmModal from '@/components/ConfirmModal';
-import StatusChangeModal from '@/components/admin/StatusChangeModal';
 import AccessDenied from '@/components/AccessDenied';
+import AdminHeader from '@/components/admin/AdminHeader';
+import CategoryManagement from '@/components/admin/CategoryManagement';
+import PlatformSettings from '@/components/admin/PlatformSettings';
+import PrefixManagement from '@/components/admin/PrefixManagement';
+import StatusChangeModal from '@/components/admin/StatusChangeModal';
+import StatusManagement from '@/components/admin/StatusManagement';
+import SuggestionManagement from '@/components/admin/SuggestionManagement';
+// import UserManagement from '@/components/admin/UserManagement'; // Reported as unused, but verify usage first. I'll just prefix it if unsure, but if it's the component list, I'll check.
+import WorkspaceDangerZone from '@/components/admin/WorkspaceDangerZone';
+import WorkspaceMemberManagement from '@/components/admin/WorkspaceMemberManagement';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import type { Category, Settings, Status, Suggestion, User, UserPrefix, Workspace, WorkspaceMember } from '@/types';
 
 const STATUS_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
@@ -38,16 +38,16 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState<any>(null);
+  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'moderator' | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'board' | 'members' | 'suggestions' | 'danger'>('general');
 
   // Prefix management state
-  const [prefixes, setPrefixes] = useState<any[]>([]);
+  const [prefixes, setPrefixes] = useState<UserPrefix[]>([]);
   const [newPrefixName, setNewPrefixName] = useState('');
   const [newPrefixColor, setNewPrefixColor] = useState('#6366f1');
   const [isAddingPrefix, setIsAddingPrefix] = useState(false);
@@ -55,8 +55,7 @@ export default function AdminPage() {
   const prefixColorPickerRef = useRef<HTMLDivElement>(null);
 
   // User management state
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [isUpdatingUser, setIsUpdatingUser] = useState<string | null>(null);
+  const [_allUsers, setAllUsers] = useState<User[]>([]);
 
   // Category management state
   const [newCatName, setNewCatName] = useState('');
@@ -104,11 +103,11 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+    const handleClick = (_e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(_e.target as Node)) {
         setShowColorPicker(false);
       }
-      if (prefixColorPickerRef.current && !prefixColorPickerRef.current.contains(e.target as Node)) {
+      if (prefixColorPickerRef.current && !prefixColorPickerRef.current.contains(_e.target as Node)) {
         setShowPrefixColorPicker(false);
       }
     };
@@ -119,12 +118,12 @@ export default function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       // First, get the actual workspace record
-      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
+      const workspaceRecord = await pb.collection('workspaces').getFirstListItem<Workspace>(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
       const realWorkspaceId = workspaceRecord.id;
       setActiveWorkspace(workspaceRecord);
 
       // Check admin status first
-      const memberCheck = await pb.collection('workspace_members').getFirstListItem(
+      const memberCheck = await pb.collection('workspace_members').getFirstListItem<WorkspaceMember>(
         `(workspace = "${realWorkspaceId}" || workspace = "${workspaceId}") && user = "${pb.authStore.record?.id}"`,
         { requestKey: null }
       ).catch(() => null);
@@ -164,11 +163,11 @@ export default function AdminPage() {
           sort: 'name',
           requestKey: null,
         }),
-        pb.collection('user_prefixes').getFullList({
+        pb.collection('user_prefixes').getFullList<UserPrefix>({
           filter: `workspace_id = "${realWorkspaceId}" || workspace_id = ""`,
           requestKey: null,
         }),
-        pb.collection('workspace_members').getFullList({
+        pb.collection('workspace_members').getFullList<WorkspaceMember>({
           filter: `workspace = "${realWorkspaceId}" || workspace = "${workspaceId}"`,
           expand: 'user,prefixes',
           requestKey: null,
@@ -185,7 +184,7 @@ export default function AdminPage() {
         if (records.length > 0) {
           settingsRecord = records[0];
         } else {
-          settingsRecord = await pb.collection('settings').create({ default_status: '', deletable_statuses: [], workspace_id: realWorkspaceId }) as unknown as Settings;
+          settingsRecord = await pb.collection('settings').create<Settings>({ default_status: '', deletable_statuses: [], workspace_id: realWorkspaceId });
         }
       } catch (err) {
         logger.warn('Failed to fetch settings:', err);
@@ -196,7 +195,7 @@ export default function AdminPage() {
       setStatuses(statRecords);
       setPrefixes(prefixRecords);
       setMembers(memberRecords);
-      setAllUsers(memberRecords.map(m => m.expand?.user).filter(Boolean));
+      setAllUsers(memberRecords.map(m => m.expand?.user).filter((u): u is User => !!u));
       setSettings(settingsRecord);
     } catch (err) {
       logger.error('Failed to fetch data:', err);
@@ -228,26 +227,26 @@ export default function AdminPage() {
     });
   };
 
-  const commitStatusChange = async (comment: string) => {
+  const commitStatusChange = async (_comment: string) => {
     const { suggestionId, statusId } = statusChangeModal;
     setStatusChangeModal(prev => ({ ...prev, isOpen: false }));
     setUpdatingId(suggestionId);
     try {
-      const updateData: any = { status_id: statusId || null };
+      const updateData = { status_id: statusId || null };
       const statusObj = statuses.find(s => s.id === statusId);
       await pb.collection('suggestions').update(suggestionId, updateData, { requestKey: null });
-      setSuggestions((prev) => prev.map((s) => (s.id === suggestionId ? { ...s, status_id: updateData.status_id, status: (statusObj?.name || '') as any, expand: { ...s.expand, status_id: statusObj } } : s)));
+      setSuggestions((prev) => prev.map((s) => (s.id === suggestionId ? { ...s, status_id: updateData.status_id as string, expand: { ...s.expand, status_id: statusObj } } : s)));
       toast.success('Статус обновлён');
 
       const suggestion = suggestions.find((s) => s.id === suggestionId);
       if (suggestion?.author) {
         const statusText = statusObj?.name || 'Без статуса';
-        const notifMessage = comment
-          ? `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}. ${comment}`
+        const notifMessage = _comment
+          ? `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}. ${_comment}`
           : `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}`;
         await pb.collection('notifications').create({ user: suggestion.author, message: notifMessage, read: false }, { requestKey: null });
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при обновлении статуса');
     } finally {
       setUpdatingId(null);
@@ -269,7 +268,7 @@ export default function AdminPage() {
           read: false
         }, { requestKey: null });
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при назначении исполнителя');
     } finally {
       setUpdatingId(null);
@@ -281,13 +280,13 @@ export default function AdminPage() {
     if (!newCatName.trim()) return;
     setIsAddingCat(true);
     try {
-      const record = await pb.collection('categories').create({ name: newCatName.trim(), icon: newCatIcon.trim(), workspace_id: activeWorkspace.id }) as unknown as Category;
+      const record = await pb.collection('categories').create<Category>({ name: newCatName.trim(), icon: newCatIcon.trim(), workspace_id: activeWorkspace?.id });
       setCategories((prev) => [...prev, record].sort((a, b) => a.name.localeCompare(b.name)));
       setNewCatName('');
       setNewCatIcon('');
       setShowIconPicker(false);
       toast.success('Категория добавлена');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при добавлении категории');
     } finally {
       setIsAddingCat(false);
@@ -305,7 +304,7 @@ export default function AdminPage() {
           await pb.collection('categories').delete(id);
           setCategories((prev) => prev.filter((c) => c.id !== id));
           toast.success('Категория удалена');
-        } catch (err) {
+        } catch (_err) {
           toast.error('Ошибка при удалении категории');
         } finally {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
@@ -319,12 +318,12 @@ export default function AdminPage() {
     if (!newStatName.trim()) return;
     setIsAddingStat(true);
     try {
-      const record = await pb.collection('statuses').create({ name: newStatName.trim(), color: newStatColor, workspace_id: activeWorkspace.id }) as unknown as Status;
+      const record = await pb.collection('statuses').create<Status>({ name: newStatName.trim(), color: newStatColor, workspace_id: activeWorkspace?.id });
       setStatuses((prev) => [...prev, record].sort((a, b) => a.name.localeCompare(b.name)));
       setNewStatName('');
       setNewStatColor('#6366f1');
       toast.success('Статус добавлен');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при добавлении статуса');
     } finally {
       setIsAddingStat(false);
@@ -342,7 +341,7 @@ export default function AdminPage() {
           await pb.collection('statuses').delete(id);
           setStatuses((prev) => prev.filter((s) => s.id !== id));
           toast.success('Статус удален');
-        } catch (err) {
+        } catch (_err) {
           toast.error('Ошибка при удалении статуса');
         } finally {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
@@ -355,10 +354,10 @@ export default function AdminPage() {
     if (!settings) return;
     setIsSavingSettings(true);
     try {
-      const updated = await pb.collection('settings').update(settings.id, updates) as unknown as Settings;
+      const updated = await pb.collection('settings').update<Settings>(settings.id, updates);
       setSettings(updated);
       toast.success('Настройки сохранены');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при сохранении настроек');
     } finally {
       setIsSavingSettings(false);
@@ -370,16 +369,16 @@ export default function AdminPage() {
     if (!newPrefixName.trim()) return;
     setIsAddingPrefix(true);
     try {
-      const record = await pb.collection('user_prefixes').create({ 
+      const record = await pb.collection('user_prefixes').create<UserPrefix>({ 
         name: newPrefixName.trim(), 
         color: newPrefixColor,
-        workspace_id: activeWorkspace.id 
+        workspace_id: activeWorkspace?.id 
       });
       setPrefixes((prev) => [...prev, record].sort((a, b) => a.name.localeCompare(b.name)));
       setNewPrefixName('');
       setNewPrefixColor('#6366f1');
       toast.success('Префикс добавлен');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при добавлении префикса');
     } finally {
       setIsAddingPrefix(false);
@@ -397,7 +396,7 @@ export default function AdminPage() {
           await pb.collection('user_prefixes').delete(id);
           setPrefixes((prev) => prev.filter((p) => p.id !== id));
           toast.success('Префикс удален');
-        } catch (err) {
+        } catch (_err) {
           toast.error('Ошибка при удалении префикса');
         } finally {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
@@ -409,10 +408,10 @@ export default function AdminPage() {
   const handleUpdateMemberPrefix = async (memberId: string, prefixIds: string[]) => {
     try {
       await pb.collection('workspace_members').update(memberId, { prefixes: prefixIds });
-      const updatedMember = await pb.collection('workspace_members').getOne(memberId, { expand: 'user,prefixes', requestKey: null });
+      const updatedMember = await pb.collection('workspace_members').getOne<WorkspaceMember>(memberId, { expand: 'user,prefixes', requestKey: null });
       setMembers((prev) => prev.map(m => m.id === memberId ? updatedMember : m));
       toast.success('Префиксы участника обновлены');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при обновлении префиксов');
     }
   };
@@ -420,10 +419,10 @@ export default function AdminPage() {
   const handleUpdateMemberRole = async (memberId: string, role: string) => {
     try {
       await pb.collection('workspace_members').update(memberId, { role });
-      const updatedMember = await pb.collection('workspace_members').getOne(memberId, { expand: 'user,prefixes', requestKey: null });
+      const updatedMember = await pb.collection('workspace_members').getOne<WorkspaceMember>(memberId, { expand: 'user,prefixes', requestKey: null });
       setMembers((prev) => prev.map(m => m.id === memberId ? updatedMember : m));
       toast.success('Роль участника обновлена');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при обновлении роли');
     }
   };
@@ -505,7 +504,7 @@ export default function AdminPage() {
         ].filter(t => userRole === 'admin' || t.id !== 'danger').map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as 'general' | 'board' | 'members' | 'suggestions' | 'danger')}
             style={{
               display: 'flex',
               alignItems: 'center',

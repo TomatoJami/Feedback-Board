@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useNotifications } from '@/hooks/useNotifications';
+import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();

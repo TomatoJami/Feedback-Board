@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
+import React from 'react';
 
 export default function Footer() {
   return (
@@ -11,7 +11,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="flex flex-col items-center text-center mb-10">
           <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed font-medium max-w-3xl opacity-40 select-none italic">
-            "Современная платформа для сбора и управления обратной связью. Помогаем продуктам расти вместе с пользователями."
+            &quot;Современная платформа для сбора и управления обратной связью. Помогаем продуктам расти вместе с пользователями.&quot;
           </p>
         </div>
 

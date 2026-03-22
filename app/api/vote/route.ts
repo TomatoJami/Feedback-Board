@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import PocketBase from 'pocketbase';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
+
 import { logger } from '@/lib/logger';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     try {
       const authData = await userPb.collection('users').authRefresh();
       user = authData.record;
-    } catch (e) {
+    } catch (__e) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 

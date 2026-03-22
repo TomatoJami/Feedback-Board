@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import pb from '@/lib/pocketbase';
-import { logger } from '@/lib/logger';
-import type { Notification } from '@/types';
-import { useAuth } from './useAuth';
 import type { RecordSubscription } from 'pocketbase';
+import { useCallback,useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import type { Notification } from '@/types';
+
+import { useAuth } from './useAuth';
 
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -21,7 +23,6 @@ export function useNotifications() {
         requestKey: null,
       });
       setNotifications(records);
-      setUnreadCount(records.filter((n) => !n.read).length);
     } catch (err) {
       logger.error('Failed to fetch notifications:', err);
     }
@@ -33,7 +34,6 @@ export function useNotifications() {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
       logger.error('Failed to mark notification as read:', err);
     }
@@ -46,7 +46,6 @@ export function useNotifications() {
         unread.map((n) => pb.collection('notifications').update(n.id, { read: true }))
       );
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
     } catch (err) {
       logger.error('Failed to mark all as read:', err);
     }
@@ -54,7 +53,9 @@ export function useNotifications() {
 
   useEffect(() => {
     if (!user) return;
-    fetchNotifications();
+    setTimeout(() => {
+      fetchNotifications();
+    }, 0);
 
     // Subscribe to real-time notifications for this user
     pb.collection('notifications').subscribe('*', (e: RecordSubscription<Notification>) => {
@@ -63,7 +64,6 @@ export function useNotifications() {
       switch (e.action) {
         case 'create':
           setNotifications((prev) => [e.record, ...prev]);
-          setUnreadCount((prev) => prev + 1);
           break;
         case 'update':
           setNotifications((prev) =>

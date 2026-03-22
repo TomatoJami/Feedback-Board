@@ -1,141 +1,142 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import SuggestionCard from '@/components/SuggestionCard';
-import CommentItem from '@/components/CommentItem';
-import { Suggestion, SuggestionComment } from '@/types';
 import { ChatBubbleLeftRightIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
+import React from 'react';
 
-const MOCK_SUGGESTIONS: Suggestion[] = [
-  {
-    id: 'mock1',
-    collectionId: 's',
-    collectionName: 'suggestions',
-    created: new Date().toISOString(),
-    updated: new Date().toISOString(),
-    title: 'Темная тема для интерфейса 🌙',
-    description: 'Было бы круто добавить возможность переключаться на темную тему, чтобы было комфортно работать в вечернее время.',
-    category_id: 'cat1',
-    status: 'In_Progress',
-    author: 'user1',
-    is_public: true,
-    votes_count: 142,
-    workspace_id: 'w1',
-    image: '',
-    expand: {
-      category_id: {
-        id: 'cat1',
-        collectionId: 'c',
-        collectionName: 'categories',
-        created: '',
-        updated: '',
-        name: 'Интерфейс',
-        icon: '🎨',
-        workspace_id: 'w1',
-        is_default: false,
-        order: 1
-      },
-      status_id: {
-        id: 'stat1',
-        collectionId: 'st',
-        collectionName: 'statuses',
-        created: '',
-        updated: '',
-        name: 'В работе',
-        color: '#f59e0b',
-        workspace_id: 'w1',
-        is_default: false,
-        order: 1
-      },
-      author: {
-        id: 'user1',
-        collectionId: 'u',
-        collectionName: 'users',
-        created: '',
-        updated: '',
-        name: 'Алексей С.',
-        username: 'alex',
-        email: '',
-        emailVisibility: false,
-        verified: true,
-        avatar: '',
-        role: 'user',
-        status: 'active',
-        workspaces: []
-      }
-    }
-  },
-  {
-    id: 'mock2',
-    collectionId: 's',
-    collectionName: 'suggestions',
-    created: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updated: new Date().toISOString(),
-    title: 'Менеджмент ролей пользователей',
-    description: 'Назначать права модераторов и администраторов проверенным участникам доски.',
-    category_id: 'cat2',
-    status: 'Planned',
-    author: 'user2',
-    is_public: true,
-    votes_count: 89,
-    workspace_id: 'w1',
-    image: '',
-    expand: {
-      category_id: {
-        id: 'cat2',
-        collectionId: 'c',
-        collectionName: 'categories',
-        created: '',
-        updated: '',
-        name: 'Интеграции',
-        icon: '🔗',
-        workspace_id: 'w1',
-        is_default: false,
-        order: 2
-      },
-      status_id: {
-        id: 'stat2',
-        collectionId: 'st',
-        collectionName: 'statuses',
-        created: '',
-        updated: '',
-        name: 'В планах',
-        color: '#a855f7',
-        workspace_id: 'w1',
-        is_default: false,
-        order: 2
-      },
-      author: {
-        id: 'user2',
-        collectionId: 'u',
-        collectionName: 'users',
-        created: '',
-        updated: '',
-        name: 'Мария В.',
-        username: 'maria',
-        email: '',
-        emailVisibility: false,
-        verified: true,
-        avatar: '',
-        role: 'user',
-        status: 'active',
-        workspaces: []
-      }
-    }
-  }
-];
+import CommentItem from '@/components/CommentItem';
+import SuggestionCard from '@/components/SuggestionCard';
+import { Suggestion, SuggestionComment } from '@/types';
 
 export default function LivePreview() {
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<Suggestion | null>(null);
 
-  const MOCK_COMMENTS: SuggestionComment[] = [
+  const MOCK_SUGGESTIONS = React.useMemo<Suggestion[]>(() => [
+    {
+      id: 'mock1',
+      collectionId: 's',
+      collectionName: 'suggestions',
+      created: '2024-01-01T12:00:00.000Z',
+      updated: '2024-01-01T12:00:00.000Z',
+      title: 'Темная тема для интерфейса 🌙',
+      description: 'Было бы круто добавить возможность переключаться на темную тему, чтобы было комфортно работать в вечернее время.',
+      category_id: 'cat1',
+      status: 'In_Progress',
+      author: 'user1',
+      is_public: true,
+      votes_count: 142,
+      workspace_id: 'w1',
+      image: '',
+      expand: {
+        category_id: {
+          id: 'cat1',
+          collectionId: 'c',
+          collectionName: 'categories',
+          created: '',
+          updated: '',
+          name: 'Интерфейс',
+          icon: '🎨',
+          workspace_id: 'w1',
+          is_default: false,
+          order: 1
+        },
+        status_id: {
+          id: 'stat1',
+          collectionId: 'st',
+          collectionName: 'statuses',
+          created: '',
+          updated: '',
+          name: 'В работе',
+          color: '#f59e0b',
+          workspace_id: 'w1',
+          is_default: false,
+          order: 1
+        },
+        author: {
+          id: 'user1',
+          collectionId: 'u',
+          collectionName: 'users',
+          created: '',
+          updated: '',
+          name: 'Алексей С.',
+          username: 'alex',
+          email: '',
+          emailVisibility: false,
+          verified: true,
+          avatar: '',
+          role: 'user',
+          status: 'active',
+          workspaces: []
+        }
+      }
+    },
+    {
+      id: 'mock2',
+      collectionId: 's',
+      collectionName: 'suggestions',
+      created: '2023-12-30T10:00:00.000Z',
+      updated: '2024-01-01T12:00:00.000Z',
+      title: 'Менеджмент ролей пользователей',
+      description: 'Назначать права модераторов и администраторов проверенным участникам доски.',
+      category_id: 'cat2',
+      status: 'Planned',
+      author: 'user2',
+      is_public: true,
+      votes_count: 89,
+      workspace_id: 'w1',
+      image: '',
+      expand: {
+        category_id: {
+          id: 'cat2',
+          collectionId: 'c',
+          collectionName: 'categories',
+          created: '',
+          updated: '',
+          name: 'Интеграции',
+          icon: '🔗',
+          workspace_id: 'w1',
+          is_default: false,
+          order: 2
+        },
+        status_id: {
+          id: 'stat2',
+          collectionId: 'st',
+          collectionName: 'statuses',
+          created: '',
+          updated: '',
+          name: 'В планах',
+          color: '#a855f7',
+          workspace_id: 'w1',
+          is_default: false,
+          order: 2
+        },
+        author: {
+          id: 'user2',
+          collectionId: 'u',
+          collectionName: 'users',
+          created: '',
+          updated: '',
+          name: 'Мария В.',
+          username: 'maria',
+          email: '',
+          emailVisibility: false,
+          verified: true,
+          avatar: '',
+          role: 'user',
+          status: 'active',
+          workspaces: []
+        }
+      }
+    }
+  ], []);
+
+  const MOCK_COMMENTS = React.useMemo<SuggestionComment[]>(() => [
     {
       id: 'mock_comment_1',
       collectionId: 'comments',
       collectionName: 'comments',
-      created: new Date(Date.now() - 7200000).toISOString(),
-      updated: new Date().toISOString(),
+      created: '2024-01-01T14:30:00.000Z',
+      updated: '2024-01-01T14:30:00.000Z',
       text: 'Отличная идея, очень жду этот функционал!',
       suggestion_id: 'mock1',
       suggestion: 'mock1',
@@ -166,8 +167,8 @@ export default function LivePreview() {
       id: 'mock_comment_2',
       collectionId: 'comments',
       collectionName: 'comments',
-      created: new Date(Date.now() - 3600000).toISOString(),
-      updated: new Date().toISOString(),
+      created: '2024-01-01T15:45:00.000Z',
+      updated: '2024-01-01T15:45:00.000Z',
       text: 'Согласна! Это сильно упростит нам работу.',
       suggestion_id: 'mock1',
       suggestion: 'mock1',
@@ -194,7 +195,7 @@ export default function LivePreview() {
         }
       }
     }
-  ];
+  ], []);
 
   return (
     <div id="demo-preview" className="w-full max-w-4xl pb-12 relative" style={{ margin: '0 auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -243,7 +244,7 @@ export default function LivePreview() {
                      workspaceId="w1"
                      authorPrefixes={
                        c.user === 'user4' 
-                         ? [{ id: 'p1', name: 'Moderator', color: '#a855f7' }] 
+                         ? [{ id: 'p1', name: 'Moderator', color: '#a855f7' , collectionId: '', collectionName: 'user_prefixes' }] 
                          : []
                      }
                      isSuggestionAuthor={false}

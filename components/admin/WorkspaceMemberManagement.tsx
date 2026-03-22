@@ -1,17 +1,21 @@
+import Image from 'next/image';
 import React, { useState } from 'react';
-import pb from '@/lib/pocketbase';
 import toast from 'react-hot-toast';
-import { CustomSelect, CustomMultiSelect } from './AdminUI';
+
 import ConfirmModal from '@/components/ConfirmModal';
+import pb from '@/lib/pocketbase';
+import type { User, UserPrefix, WorkspaceMember, WorkspaceRole } from '@/types';
+
+import { CustomMultiSelect,CustomSelect } from './AdminUI';
 
 interface WorkspaceMemberManagementProps {
   workspaceId: string;
-  members: any[];
-  prefixes: any[];
-  currentUser: any;
+  members: WorkspaceMember[];
+  prefixes: UserPrefix[];
+  currentUser: User | null;
   onMembersUpdated: () => void;
   onUpdateMemberPrefix: (memberId: string, prefixIds: string[]) => Promise<void>;
-  onUpdateMemberRole: (memberId: string, role: string) => Promise<void>;
+  onUpdateMemberRole: (memberId: string, role: WorkspaceRole) => Promise<void>;
   isPublic?: boolean;
   isPro?: boolean;
 }
@@ -25,10 +29,10 @@ export default function WorkspaceMemberManagement({
   onUpdateMemberPrefix,
   onUpdateMemberRole,
   isPublic = false,
-  isPro = false
+  isPro: _isPro = false
 }: WorkspaceMemberManagementProps) {
   const [inviteInput, setInviteInput] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'moderator' | 'user'>('user');
+  const [inviteRole, setInviteRole] = useState<WorkspaceRole>('user');
   const [isInviting, setIsInviting] = useState(false);
   
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -67,11 +71,12 @@ export default function WorkspaceMemberManagement({
       toast.success('Пользователь успешно приглашен!');
       setInviteInput('');
       onMembersUpdated();
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      if (error.status === 404) {
         toast.error('Пользователь не найден.');
       } else {
-        toast.error('Ошибка при приглашении пользователя. ' + (err.message || ''));
+        toast.error('Ошибка при приглашении пользователя. ' + (error.message || ''));
       }
     } finally {
       setIsInviting(false);
@@ -85,7 +90,7 @@ export default function WorkspaceMemberManagement({
       await pb.collection('workspace_members').delete(pendingMember.id);
       toast.success('Участник удален');
       onMembersUpdated();
-    } catch (err) {
+    } catch (__err) {
       toast.error('Ошибка при удалении участника');
     } finally {
       setShowRemoveConfirm(false);
@@ -94,7 +99,7 @@ export default function WorkspaceMemberManagement({
   };
 
   const initiateRemoveMember = (memberId: string, memberUserId: string, name: string) => {
-    if (memberUserId === currentUser.id) {
+    if (memberUserId === currentUser?.id) {
       toast.error('Вы не можете удалить сами себя. Попросите другого админа или владельца.');
       return;
     }
@@ -142,7 +147,7 @@ export default function WorkspaceMemberManagement({
                 { id: 'admin', name: 'Админ' }
               ]}
               value={inviteRole}
-              onChange={(val) => setInviteRole(val as any)}
+              onChange={(val) => setInviteRole(val as WorkspaceRole)}
               placeholder="Роль"
               disabled={isInviting}
             />
@@ -226,8 +231,14 @@ export default function WorkspaceMemberManagement({
                         fontWeight: 600
                       }}>
                         {member.expand?.user?.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={pb.files.getURL(member.expand.user, member.expand.user.avatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <Image 
+                            src={pb.files.getURL(member.expand.user, member.expand.user.avatar)} 
+                            alt={member.expand?.user?.name || 'User'} 
+                            width={40}
+                            height={40}
+                            unoptimized
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
                         ) : (
                           member.expand?.user?.name?.charAt(0).toUpperCase() || 'U'
                         )}
@@ -237,7 +248,7 @@ export default function WorkspaceMemberManagement({
                           {member.expand?.user?.name || member.expand?.user?.email}
                           {member.user === currentUser?.id && ' (Вы)'}
                         </div>
-                        {member.user === currentUser.id ? (
+                        {member.user === currentUser?.id ? (
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>
                             {member.role === 'admin' ? 'Админ' : member.role === 'moderator' ? 'Модератор' : isPublic ? 'Участник' : 'Пользователь'}
                           </div>
@@ -250,7 +261,7 @@ export default function WorkspaceMemberManagement({
                                 { id: 'admin', name: 'Админ' }
                               ]}
                               value={member.role}
-                              onChange={(val) => onUpdateMemberRole(member.id, val)}
+                              onChange={(val) => onUpdateMemberRole(member.id, val as WorkspaceRole)}
                               placeholder="Роль"
                               variant="small"
                             />
@@ -269,10 +280,10 @@ export default function WorkspaceMemberManagement({
                         />
                       </div>
 
-                      {member.user !== currentUser.id && (
+                      {member.user !== currentUser?.id && (
                         <button
                           type="button"
-                          onClick={() => initiateRemoveMember(member.id, member.user, member.expand?.user?.name || member.expand?.user?.email)}
+                          onClick={() => initiateRemoveMember(member.id, member.user, member.expand?.user?.name || member.expand?.user?.email || 'Пользователь')}
                           className="btn btn-ghost"
                           style={{ color: '#f43f5e', fontSize: '0.85rem' }}
                         >

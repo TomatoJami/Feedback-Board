@@ -1,13 +1,12 @@
 'use client';
 
-import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 import { ShieldExclamationIcon } from '@heroicons/react/24/outline';
+import React from 'react';
+
+import { useAuth } from '@/hooks/useAuth';
 
 export default function BlockedPage() {
   const { user, logout } = useAuth();
-  const router = useRouter();
 
   // If user is not blocked (or not logged in), redirect to home
   // But wait, if they are not logged in, they shouldn't be here either.

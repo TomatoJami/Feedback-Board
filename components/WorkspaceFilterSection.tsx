@@ -1,9 +1,11 @@
 import React from 'react';
 
+import type { User } from '@/types';
+
 interface WorkspaceFilterSectionProps {
   filterType: 'all' | 'mine' | 'invited';
   setFilterType: (type: 'all' | 'mine' | 'invited') => void;
-  user: any;
+  user: User | null;
 }
 
 export default function WorkspaceFilterSection({

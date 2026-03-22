@@ -1,35 +1,36 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
-import DOMPurify from 'isomorphic-dompurify'; // Keep as backup or for manual use if needed
-import { POCKETBASE_URL } from '@/lib/pocketbase';
-import { logger } from '@/lib/logger';
-import type { SuggestionComment } from '@/types';
-import type { CommentPendingVote } from '@/hooks/useComments';
+import Image from 'next/image';
+import React, { useEffect,useState } from 'react';
 import { toast } from 'react-hot-toast';
-import MarkdownEditor from '@/components/MarkdownEditor';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
+
 import ConfirmModal from '@/components/ConfirmModal';
+import MarkdownEditor from '@/components/MarkdownEditor';
+import type { CommentPendingVote } from '@/hooks/useComments';
+import { logger } from '@/lib/logger';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { getAvatarColor } from '@/lib/utils';
+import type { SuggestionComment, User, UserPrefix } from '@/types';
 
 // Deterministic color from string
 
 interface CommentItemProps {
   comment: SuggestionComment;
   allComments: SuggestionComment[];
-  user: any;
+  user: User | null;
   userVotes: Record<string, 'upvote' | 'downvote' | null>;
   pendingVotes: Record<string, CommentPendingVote>;
   onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
-  onReply: (userId: string, text: string, parentId: string) => Promise<any>;
-  onUpdate: (id: string, text: string) => Promise<any>;
+  onReply: (userId: string, text: string, parentId: string) => Promise<SuggestionComment | unknown>;
+  onUpdate: (id: string, text: string) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   workspaceRole?: 'admin' | 'moderator' | 'user' | null;
   isAdmin?: boolean;
   workspaceId?: string;
-  authorPrefixes?: any[];
+  authorPrefixes?: UserPrefix[];
   isSuggestionAuthor?: boolean;
 }
 
@@ -95,7 +96,7 @@ export default function CommentItem({
   const score = (comment.upvotes || 0) - (comment.downvotes || 0);
   const pending = pendingVotes[comment.id];
 
-  const handleReplySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !replyText.trim() || isSending) return;
     setIsSending(true);
@@ -120,7 +121,7 @@ export default function CommentItem({
       await onUpdate(comment.id, editText.trim());
       setIsEditing(false);
       toast.success('Комментарий обновлен');
-    } catch (err) {
+    } catch (__err) {
       toast.error('Ошибка при обновлении');
     } finally {
       setIsUpdating(false);
@@ -131,7 +132,7 @@ export default function CommentItem({
     try {
       await onDelete(comment.id);
       toast.success('Комментарий удален');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Ошибка при удалении');
     } finally {
       setShowDeleteConfirm(false);
@@ -158,9 +159,12 @@ export default function CommentItem({
               padding: 0
             }}>
               {cUser?.avatar ? (
-                <img 
+                <Image 
                   src={`${POCKETBASE_URL}/api/files/users/${cUser.id}/${cUser.avatar}`} 
                   alt={cName} 
+                  width={32}
+                  height={32}
+                  unoptimized
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
               ) : cName.charAt(0).toUpperCase()}
@@ -240,7 +244,7 @@ export default function CommentItem({
               <button 
                 type="button" 
                 className="btn btn-primary" 
-                onClick={(e) => handleEditSubmit(e as any)} 
+                onClick={(e) => handleEditSubmit(e as unknown as React.FormEvent)} 
                 disabled={isUpdating}
                 style={{ fontSize: '0.8rem', padding: '6px 16px' }}
               >
@@ -262,11 +266,13 @@ export default function CommentItem({
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeSanitize]}
               components={{
-                a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
-                code: ({node, inline, ...props}: any) => 
-                  inline 
-                    ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
-                    : <pre className="bg-black/40 p-2 rounded overflow-x-auto text-[0.9em] mb-2 border border-white/5"><code {...props} /></pre>
+                a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{children}</a>,
+                code: ({ className, children, ...props }) => {
+                  const isInline = !className;
+                  return isInline 
+                     ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props}>{children}</code>
+                     : <pre className="bg-black/40 p-2 rounded overflow-x-auto text-[0.9em] mb-2 border border-white/5"><code className={className} {...props}>{children}</code></pre>;
+                }
               }}
             >
               {comment.text}
@@ -356,7 +362,7 @@ export default function CommentItem({
               <button 
                 type="button" 
                 className="btn btn-primary" 
-                onClick={(e) => handleReplySubmit(e as any)} 
+                onClick={(e) => handleReplySubmit(e as unknown as React.FormEvent)} 
                 disabled={isSending}
                 style={{ fontSize: '0.8rem', padding: '6px 16px' }}
               >

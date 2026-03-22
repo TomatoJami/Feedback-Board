@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import type { Category, Status } from '@/types';
+import React, { useEffect,useRef, useState } from 'react';
+
+import type { Category, Status, User } from '@/types';
 
 interface FilterSectionProps {
   categoryId: string;
@@ -8,7 +9,7 @@ interface FilterSectionProps {
   setStatus: (status: string) => void;
   categories: Category[];
   statuses: Status[];
-  user: any;
+  user: User | null;
   sortBy: 'votes' | 'newest' | 'oldest';
   setSortBy: (sort: 'votes' | 'newest' | 'oldest') => void;
   searchQuery: string;
@@ -199,7 +200,7 @@ export default function FilterSection({
           icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5h10" /><path d="M11 9h7" /><path d="M11 13h4" /><path d="M3 17l3 3 3-3" /><path d="M6 18V4" /></svg>}
           options={sortOptions}
           value={sortBy}
-          onChange={(v) => setSortBy(v as any)}
+          onChange={(v) => setSortBy(v as 'votes' | 'newest' | 'oldest')}
         />
 
         {/* Search */}

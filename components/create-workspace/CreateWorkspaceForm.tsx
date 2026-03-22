@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import { GlobeAltIcon,LockClosedIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
-import pb from '@/lib/pocketbase';
+import React, { useState } from 'react';
+
 import { useAuth } from '@/hooks/useAuth';
-import { LockClosedIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import type { Status } from '@/types';
 
 function generateSlug(name: string) {
   return name
@@ -49,7 +51,7 @@ export default function CreateWorkspaceForm() {
           setCheckingLimit(false);
         }
       } catch (err) {
-        console.error('Limit check failed:', err);
+        logger.error('Limit check failed:', err);
         setCheckingLimit(false);
       }
     }
@@ -137,7 +139,7 @@ export default function CreateWorkspaceForm() {
       ];
       
       const createdStatuses = await Promise.all(defaultStatuses.map(status => 
-        pb.collection('statuses').create({
+        pb.collection('statuses').create<Status>({
           name: status.name,
           color: status.color,
           workspace_id: record.id
@@ -146,7 +148,7 @@ export default function CreateWorkspaceForm() {
 
       // Set default settings
       try {
-        const openStatus = createdStatuses.find((s: any) => s.name === 'Open');
+        const openStatus = createdStatuses.find((s: Status) => s.name === 'Open');
         await pb.collection('settings').create({
           default_status: openStatus?.id || '',
           deletable_statuses: [],
@@ -158,12 +160,13 @@ export default function CreateWorkspaceForm() {
       }
 
       router.push(`/w/${record.slug || record.id}`);
-    } catch (err: any) {
-      console.error('Error creating workspace:', err);
-      if (err.response?.data?.slug?.code === 'validation_not_unique') {
+    } catch (err: unknown) {
+      const error = err as { message?: string; response?: { data?: { slug?: { code?: string } } } };
+      logger.error('Error creating workspace:', error);
+      if (error.response?.data?.slug?.code === 'validation_not_unique') {
         setError('This URL is already taken. Please choose another one.');
       } else {
-        setError(err.message || 'Failed to create workspace.');
+        setError(error.message || 'Failed to create workspace.');
       }
     } finally {
       setLoading(false);

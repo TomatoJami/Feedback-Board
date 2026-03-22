@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { useWorkspaces } from '@/hooks/useWorkspaces';
-import { useAuth } from '@/hooks/useAuth';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import React, { useMemo } from 'react';
+
 import WorkspaceCard from '@/components/WorkspaceCard';
-import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
+import { useWorkspaces } from '@/hooks/useWorkspaces';
 
 interface WorkspaceListProps {
   filterType: 'all' | 'mine' | 'invited';

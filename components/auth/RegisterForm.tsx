@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useEffect,useState } from 'react';
+
 import PasswordField from '@/components/PasswordField';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function RegisterForm() {
   const { user, isLoading, register, loginWithOAuth } = useAuth();
@@ -51,11 +52,12 @@ export default function RegisterForm() {
     try {
       await register(name, email, password, passwordConfirm);
       router.push('/');
-    } catch (err: any) {
-      if (err?.status === 400 || err?.message?.includes('duplicate')) {
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      if (error.status === 400 || error.message?.includes('duplicate')) {
         setError('Пользователь с таким email уже существует или данные неверны');
       } else {
-        const message = err instanceof Error ? err.message : 'Ошибка при регистрации';
+        const message = error.message || 'Ошибка при регистрации';
         setError(message);
       }
     } finally {

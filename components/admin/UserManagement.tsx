@@ -1,10 +1,14 @@
+import Image from 'next/image';
 import React from 'react';
+
 import pb from '@/lib/pocketbase';
-import { CustomSelect, CustomMultiSelect } from './AdminUI';
+import type { User } from '@/types';
+
+import { CustomSelect } from './AdminUI';
 
 interface UserManagementProps {
-  allUsers: any[];
-  user: any;
+  allUsers: User[];
+  user: User | null;
   isUpdatingUser: string | null;
   onUpdateUserRole?: (userId: string, newRole: string) => Promise<void>;
   showGlobalRole?: boolean;
@@ -44,7 +48,14 @@ export default function UserManagement({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', overflow: 'hidden' }}>
                       {u.avatar ? (
-                        <img src={`${pb.baseUrl}/api/files/users/${u.id}/${u.avatar}`} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <Image 
+                          src={`${pb.baseUrl}/api/files/users/${u.id}/${u.avatar}`} 
+                          alt={u.name || 'User'} 
+                          width={32}
+                          height={32}
+                          unoptimized
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                       ) : (u.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>

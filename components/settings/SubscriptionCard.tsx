@@ -1,18 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useAuthContext } from '@/lib/auth-context';
-import pb from '@/lib/pocketbase';
+import { useRouter,useSearchParams } from 'next/navigation';
+import React, { useEffect,useState } from 'react';
 import { toast } from 'react-hot-toast';
 
+import { useAuthContext } from '@/lib/auth-context';
+import pb from '@/lib/pocketbase';
+import type { User } from '@/types';
+
 interface SubscriptionCardProps {
-    user: any;
+    user: User;
 }
 
 export default function SubscriptionCard({ user }: SubscriptionCardProps) {
   const router = useRouter();
-  const { user: authUser } = useAuthContext();
+  const { user: _authUser } = useAuthContext();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +59,7 @@ export default function SubscriptionCard({ user }: SubscriptionCardProps) {
         toast.error('Неверный ответ сервера');
         setLoading(false);
       }
-    } catch (err) {
+    } catch (__err: unknown) {
       toast.error('Ошибка подключения к серверу');
       setLoading(false);
     }

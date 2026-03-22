@@ -1,7 +1,10 @@
+import Image from 'next/image';
 import React from 'react';
+
 import pb from '@/lib/pocketbase';
+import type { Status,Suggestion, WorkspaceMember } from '@/types';
+
 import { CustomSelect } from './AdminUI';
-import type { Suggestion, Status } from '@/types';
 
 interface SuggestionManagementProps {
   suggestions: Suggestion[];
@@ -9,7 +12,7 @@ interface SuggestionManagementProps {
   updatingId: string | null;
   onStatusChange: (id: string, newStatusId: string) => Promise<void>;
   onAssigneeChange: (id: string, userId: string | null) => Promise<void>;
-  members: any[];
+  members: WorkspaceMember[];
 }
 
 export default function SuggestionManagement({
@@ -70,9 +73,12 @@ export default function SuggestionManagement({
                       flexShrink: 0
                     }}>
                       {s.expand?.author?.avatar ? (
-                        <img 
+                        <Image 
                           src={`${pb.baseUrl}/api/files/users/${s.expand.author.id}/${s.expand.author.avatar}`} 
-                          alt={s.expand.author.name} 
+                          alt={s.expand.author.name || 'Author'} 
+                          width={24}
+                          height={24}
+                          unoptimized
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                         />
                       ) : (s.expand?.author?.name || 'A').charAt(0).toUpperCase()}

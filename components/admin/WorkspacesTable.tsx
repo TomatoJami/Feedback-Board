@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
 import { TrashIcon } from '@heroicons/react/24/outline';
-import ConfirmModal from '@/components/ConfirmModal';
-import pb from '@/lib/pocketbase';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
+import ConfirmModal from '@/components/ConfirmModal';
+import pb from '@/lib/pocketbase';
+import type { Workspace } from '@/types';
+
 interface WorkspacesTableProps {
-    workspaces: any[];
-    setWorkspaces: React.Dispatch<React.SetStateAction<any[]>>;
+    workspaces: Workspace[];
+    setWorkspaces: React.Dispatch<React.SetStateAction<Workspace[]>>;
 }
 
 export default function WorkspacesTable({ workspaces, setWorkspaces }: WorkspacesTableProps) {
@@ -22,7 +24,7 @@ export default function WorkspacesTable({ workspaces, setWorkspaces }: Workspace
             await pb.collection('workspaces').delete(pendingDelete.id);
             setWorkspaces(prev => prev.filter(w => w.id !== pendingDelete.id));
             toast.success('Воркспейс удален');
-        } catch (err) {
+        } catch (__err) {
             toast.error('Ошибка при удалении');
         } finally {
             setShowDeleteConfirm(false);

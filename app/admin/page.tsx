@@ -1,25 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import pb from '@/lib/pocketbase';
-import toast from 'react-hot-toast';
-import { StatCard } from '@/components/admin/AdminUI';
 import {
-    UsersIcon,
+    GlobeAltIcon,
     StarIcon,
-    GlobeAltIcon
-} from '@heroicons/react/24/outline';
+    UsersIcon} from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
+import React, { useCallback,useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+
+import { StatCard } from '@/components/admin/AdminUI';
 import UsersTable from '@/components/admin/UsersTable';
 import WorkspacesTable from '@/components/admin/WorkspacesTable';
+import { useAuth } from '@/hooks/useAuth';
+import pb from '@/lib/pocketbase';
+import type { User, Workspace } from '@/types';
 
 export default function GlobalAdminPage() {
     const { user, isLoading } = useAuth();
     const router = useRouter();
 
-    const [workspaces, setWorkspaces] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
+    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
     const stats = {
@@ -31,12 +32,12 @@ export default function GlobalAdminPage() {
     const fetchData = useCallback(async () => {
         try {
             const [wsRecords, userRecords] = await Promise.all([
-                pb.collection('workspaces').getFullList({ sort: '-created', expand: 'owner', requestKey: null }),
-                pb.collection('users').getFullList({ sort: '-created', requestKey: null }),
+                pb.collection('workspaces').getFullList<Workspace>({ sort: '-created', expand: 'owner', requestKey: null }),
+                pb.collection('users').getFullList<User>({ sort: '-created', requestKey: null }),
             ]);
             setWorkspaces(wsRecords);
             setUsers(userRecords);
-        } catch (err) {
+        } catch (__err) {
             toast.error('Failed to load admin data');
         } finally {
             setLoadingData(false);
@@ -50,7 +51,6 @@ export default function GlobalAdminPage() {
             } else if (user.role !== 'admin') {
                 router.push('/');
             } else {
-                console.log('Fetching admin data for:', user.email);
                 fetchData();
             }
         }
@@ -96,7 +96,7 @@ export default function GlobalAdminPage() {
                     value={stats.proUsers}
                     icon={<StarIcon className="w-5 h-5" />}
                     color="#fbbf24"
-                    subtext={`${((stats.proUsers / stats.totalUsers) * 100).toFixed(1)}% от всех`}
+                    subtext={stats.totalUsers > 0 ? `${((stats.proUsers / stats.totalUsers) * 100).toFixed(1)}% от всех` : '0% от всех'}
                 />
                 <StatCard
                     title="Воркспейсов"

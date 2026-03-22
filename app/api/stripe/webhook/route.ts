@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
-import Stripe from 'stripe';
 import PocketBase from 'pocketbase';
+import Stripe from 'stripe';
+
+import { logger } from '@/lib/logger';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
+import { stripe } from '@/lib/stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -12,16 +14,17 @@ export async function POST(req: Request) {
     const signature = req.headers.get('stripe-signature');
 
     if (!signature || !webhookSecret) {
-      console.error('Webhook error: Missing signature or secret');
+      logger.error('Webhook error: Missing signature or secret');
       return new NextResponse('Webhook Error: Missing signature or secret', { status: 400 });
     }
 
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error(`Webhook signature verification failed: ${error.message}`);
+      return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
     }
 
     const pb = new PocketBase(POCKETBASE_URL);
@@ -35,12 +38,13 @@ export async function POST(req: Request) {
         process.env.PB_ADMIN_EMAIL,
         process.env.PB_ADMIN_PASSWORD
       );
-    } catch (e: any) {
-      console.error('Failed to auth PB Admin in webhook:', e.message);
-      return new NextResponse(`Admin Auth Error: ${e.message}`, { status: 500 });
+    } catch (e: unknown) {
+      const error = e as Error;
+      logger.error('Failed to auth PB Admin in webhook:', error.message);
+      return new NextResponse(`Admin Auth Error: ${error.message}`, { status: 500 });
     }
 
-    console.log('Processing event type:', event.type);
+    logger.info(`Processing event type: ${event.type}`);
 
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -49,23 +53,23 @@ export async function POST(req: Request) {
         if (session.mode === 'subscription' && session.client_reference_id) {
           try {
             const subscriptionId = session.subscription as string;
-            console.log('Retrieving subscription details:', subscriptionId);
+            logger.info(`Retrieving subscription details: ${subscriptionId}`);
             const customerId = session.customer as string;
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-            
             // Access the timestamp from either the top level or nested items
-            const ts = (subscription as any).items?.data[0]?.current_period_end 
-              || (subscription as any).current_period_end;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const subExtended = subscription as any;
+            const ts = subExtended.current_period_end;
             
-            const priceId = (subscription as any).items?.data[0]?.price?.id;
+            const priceId = subExtended.items.data[0]?.price?.id;
 
             // Format date for PB: YYYY-MM-DD HH:MM:SS
             const endDate = ts 
               ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0]
               : null;
-
-            console.log(`Success! Updating user ${session.client_reference_id} with date ${endDate}`);
-
+            
+            logger.info(`Success! Updating user ${session.client_reference_id} with date ${endDate}`);
+            
             await pb.collection('users').update(session.client_reference_id, {
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
@@ -73,9 +77,10 @@ export async function POST(req: Request) {
               stripe_current_period_end: endDate,
               plan: 'pro',
             });
-          } catch (updateErr: any) {
-            console.error('ERROR updating user record in PB:', updateErr.message);
-            throw updateErr;
+          } catch (updateErr: unknown) {
+            const error = updateErr as Error;
+            logger.error(`ERROR updating user record in PB: ${error.message}`);
+            throw error;
           }
         }
         break;
@@ -95,29 +100,32 @@ export async function POST(req: Request) {
               stripe_price_id: '',
             });
           } else {
-            const ts = (subscription as any).current_period_end 
-              || (subscription as any).items?.data[0]?.current_period_end;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const subExtended = subscription as any;
+            const ts = subExtended.current_period_end;
             const endDate = ts ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0] : null;
 
             await pb.collection('users').update(record.id, {
               stripe_subscription_id: subscription.id,
-              stripe_price_id: (subscription as any).items.data[0].price.id,
+              stripe_price_id: subExtended.items.data[0].price.id,
               stripe_current_period_end: endDate,
               plan: 'pro',
             });
           }
-        } catch (e: any) {
-          console.error(`User not found or update failed for customerId: ${customerId}`, e.message);
+        } catch (e: unknown) {
+          const error = e as Error;
+          logger.error(`User not found or update failed for customerId: ${customerId} - ${error.message}`);
         }
         break;
       }
       default:
-        console.warn(`Unhandled event type: ${event.type}`);
+        logger.warn(`Unhandled event type: ${event.type}`);
     }
 
     return new NextResponse('Webhook processing successful', { status: 200 });
-  } catch (error: any) {
-    console.error('Webhook TOP-LEVEL Error:', error.message);
-    return new NextResponse(`Internal Webhook Error: ${error.message}`, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    logger.error(`Webhook TOP-LEVEL Error: ${err.message}`);
+    return new NextResponse(`Internal Webhook Error: ${err.message}`, { status: 500 });
   }
 }

@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import React from 'react';
 
+import type { UserPrefix } from '@/types';
+
 interface PrefixManagementProps {
-  prefixes: any[];
+  prefixes: UserPrefix[];
   newPrefixName: string;
   setNewPrefixName: (val: string) => void;
   newPrefixColor: string;
@@ -133,7 +136,7 @@ export default function PrefixManagement({
         {!isReadOnly && !isPro && (
           <div className="flex flex-col items-center justify-center p-6 border border-dashed border-white/10 rounded-xl bg-white/[0.02] mb-6">
             <div className="text-zinc-500 text-sm mb-3">Кастомные префиксы доступны только в плане PRO</div>
-            <a href="/#pricing" className="btn btn-sm btn-primary">Улучшить тариф</a>
+            <Link href="/#pricing" className="btn btn-sm btn-primary">Улучшить тариф</Link>
           </div>
         )}
 

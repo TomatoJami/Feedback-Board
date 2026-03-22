@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import React, { useEffect,useRef, useState } from 'react';
+
 import { useAuth } from '@/hooks/useAuth';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { getAvatarColor } from '@/lib/utils';

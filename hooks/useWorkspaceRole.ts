@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect,useState } from 'react';
+
 import pb from '@/lib/pocketbase';
 import { WorkspaceRole } from '@/types';
 
@@ -29,14 +30,15 @@ export function useWorkspaceRole(workspaceId: string | undefined) {
           setRole(record.role as WorkspaceRole);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMounted) {
           // 404 means no membership found, which is fine
-          if (err.status === 404) {
+          const pbError = err as { status?: number };
+          if (pbError.status === 404) {
             setRole(null);
           } else {
             console.error('Error fetching workspace role:', err);
-            setError(err);
+            setError(err instanceof Error ? err : new Error(String(err)));
           }
         }
       } finally {

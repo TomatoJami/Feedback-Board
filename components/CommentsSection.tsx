@@ -1,17 +1,17 @@
 'use client';
 
+import { ChatBubbleOvalLeftIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+
 import CommentItem from '@/components/CommentItem';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { useComments } from '@/hooks/useComments';
-import { toast } from 'react-hot-toast';
-import { ChatBubbleOvalLeftIcon } from '@heroicons/react/24/outline';
-
-import type { SuggestionComment } from '@/types';
+import type { User } from '@/types';
 
 interface CommentsSectionProps {
   suggestionId: string;
-  user: any;
+  user: User | null;
   isAdmin?: boolean;
   workspaceRole?: 'admin' | 'moderator' | 'user' | null;
   workspaceId?: string;
@@ -41,8 +41,8 @@ export default function CommentsSection({
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
 
-  const handleComment = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleComment = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
     if (!user || !commentText.trim()) return;
 
     setSending(true);
@@ -50,7 +50,7 @@ export default function CommentsSection({
       await addComment(user.id, commentText);
       setCommentText('');
       toast.success('Комментарий добавлен');
-    } catch (err) {
+    } catch (__err) {
       toast.error('Ошибка при отправке');
     } finally {
       setSending(false);
@@ -130,7 +130,7 @@ export default function CommentsSection({
             <button
               type="button"
               className="btn btn-primary"
-              onClick={(e) => handleComment(e as any)}
+              onClick={() => handleComment()}
               disabled={sending || !commentText.trim()}
               style={{ fontSize: '0.9rem', padding: '10px 32px' }}
             >

@@ -1,6 +1,8 @@
 import React from 'react';
-import { CustomSelect, CustomMultiSelect } from './AdminUI';
-import type { Status, Settings } from '@/types';
+
+import type { Settings,Status } from '@/types';
+
+import { CustomMultiSelect,CustomSelect } from './AdminUI';
 
 interface PlatformSettingsProps {
   settings: Settings | null;

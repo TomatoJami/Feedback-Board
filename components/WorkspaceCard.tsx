@@ -1,10 +1,11 @@
-import React from 'react';
+import { BuildingStorefrontIcon, GlobeAltIcon,LockClosedIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { Workspace } from '@/types/workspace';
-import { BuildingStorefrontIcon, LockClosedIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
+import React from 'react';
+
 import Badge from '@/components/ui/Badge';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { getAvatarColor } from '@/lib/utils';
+import { Workspace } from '@/types/workspace';
 
 interface WorkspaceCardProps {
   workspace: Workspace;

@@ -1,13 +1,4 @@
-import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
-import Badge from '@/components/ui/Badge';
-
-interface GlobalHomeHeaderProps {
-  filterType: 'all' | 'mine' | 'invited';
-}
-
 export default function GlobalHomeHeader({ filterType, children }: { filterType: 'all' | 'mine' | 'invited', children?: React.ReactNode }) {
-  const { user } = useAuth();
   
   const titles = {
     all: 'Все пространства',

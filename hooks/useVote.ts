@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import pb from '@/lib/pocketbase';
-import { logger } from '@/lib/logger';
+import { useCallback, useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useAuth } from './useAuth';
+
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
 import type { Vote, VoteType } from '@/types';
+
+import { useAuth } from './useAuth';
 
 const CHANGE_WINDOW_MS = 15_000;
 const VOTE_SPAM_PROTECTION_MS = 500;
@@ -57,7 +59,7 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
           setIsLocked(true);
           setIsPending(false);
         }
-      } catch {
+      } catch (_err: unknown) {
         // No vote found
       }
     })();
@@ -164,7 +166,7 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
       setVoteId(result.id);
       // Start/restart the 15s change window
       startChangeTimer();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Rollback
       setVoteType(previousVoteType);
       setOptimisticScore(previousScore);

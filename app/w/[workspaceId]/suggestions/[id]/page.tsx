@@ -1,27 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import pb from '@/lib/pocketbase';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
-import { useAuth } from '@/hooks/useAuth';
-import { useVote } from '@/hooks/useVote';
-import { useComments } from '@/hooks/useComments';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect,useState } from 'react';
 import toast from 'react-hot-toast';
-import { logger } from '@/lib/logger';
-import type { Suggestion, Settings } from '@/types';
-import { getAvatarColor } from '@/lib/utils';
-import SuggestionDetailCard from '@/components/SuggestionDetailCard';
+
 import CommentsSection from '@/components/CommentsSection';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import SuggestionDetailCard from '@/components/SuggestionDetailCard';
+import { useAuth } from '@/hooks/useAuth';
+import { useVote } from '@/hooks/useVote';
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
+import { getAvatarColor } from '@/lib/utils';
+import type { Settings,Suggestion } from '@/types';
+import type { UserPrefix } from '@/types/user-prefix';
 
-const STATUS_COLORS: Record<string, string> = {
-  Open: '#3b82f6',
-  Planned: '#a855f7',
-  In_Progress: '#f59e0b',
-  Completed: '#10b981',
-};
+
 
 
 export default function SuggestionDetailPage() {
@@ -36,9 +32,9 @@ export default function SuggestionDetailPage() {
   
   const { voteType, isPending, remainingSeconds, isLoading: voteLoading, vote, optimisticScore } = useVote(id, suggestion?.votes_count ?? 0);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [_settings, setSettings] = useState<Settings | null>(null);
   const [workspaceRole, setWorkspaceRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
-  const [authorPrefixes, setAuthorPrefixes] = useState<any[]>([]);
+  const [authorPrefixes, setAuthorPrefixes] = useState<UserPrefix[]>([]);
   const [checkingAccess, setCheckingAccess] = useState(true);
 
   // Check workspace access first to redirect unauthorized users
@@ -47,7 +43,7 @@ export default function SuggestionDetailPage() {
       try {
         await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
         setCheckingAccess(false);
-      } catch (err: any) {
+      } catch (_err: unknown) {
         if (!user) {
           router.push('/auth/login');
         } else {
@@ -95,7 +91,7 @@ export default function SuggestionDetailPage() {
         setSuggestion(suggestionRecord);
         if (settingsRecords.length > 0) setSettings(settingsRecords[0]);
         if (memberRecord) {
-          setWorkspaceRole(memberRecord.role as any);
+          setWorkspaceRole(memberRecord.role as 'admin' | 'moderator' | 'user');
         }
         try {
           const authMember = await pb.collection('workspace_members').getFirstListItem(
@@ -105,7 +101,7 @@ export default function SuggestionDetailPage() {
           if (authMember?.expand?.prefixes) {
             setAuthorPrefixes(authMember.expand.prefixes);
           }
-        } catch(e) {}
+        } catch(__e) {}
       } catch (err) {
         logger.error('Fetch error:', err);
         router.push(`/w/${workspaceId}`);
@@ -123,7 +119,7 @@ export default function SuggestionDetailPage() {
       await pb.collection('suggestions').delete(id);
       toast.success('Предложение удалено');
       router.push(`/w/${workspaceId}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Delete failed:', err);
       toast.error('Ошибка при удалении');
     } finally {

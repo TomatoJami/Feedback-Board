@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
-import PocketBase from 'pocketbase';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import PocketBase from 'pocketbase';
+
+import { logger } from '@/lib/logger';
+import { POCKETBASE_URL } from '@/lib/pocketbase';
+import { stripe } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   try {
@@ -31,8 +33,8 @@ export async function POST(req: Request) {
       if (!pb.authStore.model) {
         return new NextResponse('Unauthorized (No Model)', { status: 401 });
       }
-    } catch (err) {
-      console.error('Auth Verification Error:', err);
+    } catch (err: unknown) {
+      logger.error('Auth Verification Error:', err);
       return new NextResponse('Unauthorized (Verification Failed)', { status: 401 });
     }
 
@@ -78,8 +80,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Stripe Checkout Error:', error);
+  } catch (error: unknown) {
+    logger.error('Stripe Checkout Error:', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
 }

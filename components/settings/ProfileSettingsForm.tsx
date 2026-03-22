@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+
+import PasswordField from '@/components/PasswordField';
 import pb from '@/lib/pocketbase';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
-import PasswordField from '@/components/PasswordField';
+import type { User } from '@/types';
 
 function getAvatarColor(id: string): string {
   const colors = [
@@ -20,7 +23,7 @@ function getAvatarColor(id: string): string {
 }
 
 interface ProfileSettingsFormProps {
-    user: any;
+    user: User;
 }
 
 export default function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
@@ -142,12 +145,14 @@ export default function ProfileSettingsForm({ user }: ProfileSettingsFormProps) 
             title="Нажмите, чтобы изменить аватар"
           >
             {avatarPreview || currentAvatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarPreview || currentAvatarUrl!}
-                alt={user.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+                <Image
+                  src={avatarPreview || currentAvatarUrl!}
+                  alt={user.name || 'User Avatar'}
+                  width={100}
+                  height={100}
+                  unoptimized
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
             ) : initial}
 
             <div style={{

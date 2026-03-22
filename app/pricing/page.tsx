@@ -1,4 +1,5 @@
 import React from 'react';
+
 import Pricing from '@/components/landing/Pricing';
 
 export default function PricingPage() {

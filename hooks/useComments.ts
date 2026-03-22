@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import pb from '@/lib/pocketbase';
-import { logger } from '@/lib/logger';
-import type { SuggestionComment } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
+import { useCallback, useEffect, useRef,useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import type { SuggestionComment, UserPrefix } from '@/types';
 
 const CHANGE_WINDOW_MS = 15_000;
 
@@ -18,7 +19,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
   const [comments, setComments] = useState<SuggestionComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userVotes, setUserVotes] = useState<Record<string, 'upvote' | 'downvote' | null>>({});
-  const [memberPrefixes, setMemberPrefixes] = useState<Record<string, any[]>>({});
+  const [memberPrefixes, setMemberPrefixes] = useState<Record<string, UserPrefix[]>>({});
   const [pendingVotes, setPendingVotes] = useState<Record<string, CommentPendingVote>>({});
 
   // Track locked votes (loaded from DB on mount, or timer expired)
@@ -59,7 +60,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
           expand: 'prefixes',
           requestKey: null,
         });
-        const prefixMap: Record<string, any[]> = {};
+        const prefixMap: Record<string, UserPrefix[]> = {};
         members.forEach(m => {
           if (m.expand?.prefixes) {
             prefixMap[m.user] = m.expand.prefixes;
@@ -77,6 +78,8 @@ export function useComments(suggestionId: string, workspaceId?: string) {
 
   // Start countdown interval for pending votes
   useEffect(() => {
+    const currentTimers = pendingTimersRef.current;
+    
     countdownIntervalRef.current = setInterval(() => {
       setPendingVotes(prev => {
         const updated = { ...prev };
@@ -94,14 +97,14 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     return () => {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
       // Clear all pending timers on unmount
-      Object.values(pendingTimersRef.current).forEach(clearTimeout);
+      Object.values(currentTimers).forEach(clearTimeout);
     };
   }, []);
 
   useEffect(() => {
     fetchComments();
 
-    const unsubscribeComments = pb.collection('comments').subscribe('*', (e: RecordSubscription<SuggestionComment>) => {
+    pb.collection('comments').subscribe('*', (e: RecordSubscription<SuggestionComment>) => {
       if (e.record.suggestion !== suggestionId) return;
       setComments((prev) => {
         switch (e.action) {
@@ -120,7 +123,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       if (e.action === 'create') {
         pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user' }).then(full => {
           setComments(prev => prev.map(c => c.id === full.id ? full : c));
-        }).catch(() => {});
+        }).catch((_e) => {});
       }
     });
 
@@ -199,8 +202,8 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       try {
         const updated = await pb.collection('comments').getOne<SuggestionComment>(commentId, { expand: 'user' });
         setComments(prev => prev.map(c => c.id === commentId ? updated : c));
-      } catch {}
-    } catch (err) {
+      } catch (_err) { }
+    } catch (err: unknown) {
       logger.error('Comment vote failed:', err);
     }
   }, [userVotes, startPendingTimer]);
@@ -218,17 +221,17 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user' });
       setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
       return full;
-    } catch {
+    } catch (_err) {
       return record;
     }
-  }, [suggestionId]);
+  }, [suggestionId, workspaceId]);
 
   const updateComment = useCallback(async (id: string, text: string) => {
     try {
       const record = await pb.collection('comments').update(id, { text });
       setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
       return record;
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error('Failed to update comment:', err);
       throw err;
     }
@@ -238,7 +241,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     try {
       await pb.collection('comments').delete(id);
       setComments((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error('Failed to delete comment:', err);
       throw err;
     }

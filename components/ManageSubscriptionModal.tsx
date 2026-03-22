@@ -1,7 +1,8 @@
 'use client';
 
+import { CreditCardIcon, RocketLaunchIcon, ShieldCheckIcon,SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useEffect, useRef } from 'react';
-import { XMarkIcon, CreditCardIcon, CheckCircleIcon, RocketLaunchIcon, SparklesIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+
 import Badge from '@/components/ui/Badge';
 
 interface ManageSubscriptionModalProps {

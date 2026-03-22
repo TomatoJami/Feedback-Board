@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
-import DOMPurify from 'isomorphic-dompurify';
+import remarkGfm from 'remark-gfm';
 
 interface MarkdownEditorProps {
   value: string;
@@ -59,8 +58,9 @@ export default function MarkdownEditor({
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeSanitize]}
                 components={{
-                  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
-                  code: ({node, inline, ...props}: any) => 
+                  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  code: ({node: _node, inline, ...props}: { node?: any; inline?: boolean; [key: string]: any }) => 
                     inline 
                       ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
                       : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code {...props} /></pre>

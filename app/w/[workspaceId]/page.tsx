@@ -1,17 +1,18 @@
 'use client';
 
-import React, { Suspense, useState, useMemo } from 'react';
-import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
-import { useCategories } from '@/hooks/useCategories';
-import { useStatuses } from '@/hooks/useStatuses';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import pb, { POCKETBASE_URL } from '@/lib/pocketbase';
+import React, { Suspense, useMemo,useState } from 'react';
+
+import EmptyState from '@/components/EmptyState';
+import FilterSection from '@/components/FilterSection';
+import HomeHeader from '@/components/HomeHeader';
 import SuggestionCard from '@/components/SuggestionCard';
 import SuggestionSkeleton from '@/components/SuggestionSkeleton';
-import HomeHeader from '@/components/HomeHeader';
-import FilterSection from '@/components/FilterSection';
-import EmptyState from '@/components/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
+import { useCategories } from '@/hooks/useCategories';
+import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
+import { useStatuses } from '@/hooks/useStatuses';
+import pb from '@/lib/pocketbase';
 
 type CategoryFilter = 'All' | 'Mine' | string; // id of category
 type StatusFilter = 'All' | string; // id or standard value
@@ -45,11 +46,11 @@ function HomeContent() {
             `workspace = "${ws.id}" && user = "${user.id}"`,
             { requestKey: null }
           ).catch(() => null);
-          if (member) setUserRole(member.role as any);
+          if (member) setUserRole(member.role as 'admin' | 'moderator' | 'user');
         }
 
         setCheckingAccess(false);
-      } catch (err: any) {
+      } catch (__err: unknown) {
         if (!user) {
           router.push('/auth/login');
         } else {
@@ -61,7 +62,7 @@ function HomeContent() {
   }, [workspaceId, user, authLoading, router]);
 
   const filteredSuggestions = useMemo(() => {
-    let result = suggestions.filter((s) => {
+    const result = suggestions.filter((s) => {
       const categoryMatch =
         categoryId === 'All' ||
         (categoryId === 'Mine' ? (user && s.author === user.id) : s.category_id === categoryId);

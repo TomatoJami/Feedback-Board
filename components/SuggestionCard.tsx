@@ -1,9 +1,10 @@
-import React from 'react';
 import Link from 'next/link';
-import Badge from '@/components/ui/Badge';
-import type { Suggestion } from '@/types';
-import VoteControl from '@/components/voting/VoteControl';
+import React from 'react';
+
 import AuthorBadge from '@/components/suggestions/AuthorBadge';
+import Badge from '@/components/ui/Badge';
+import VoteControl from '@/components/voting/VoteControl';
+import type { Suggestion } from '@/types';
 
 interface SuggestionCardProps {
   suggestion: Suggestion;

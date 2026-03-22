@@ -1,9 +1,10 @@
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
-import type { Suggestion } from '@/types';
-import Badge from '@/components/ui/Badge';
+import remarkGfm from 'remark-gfm';
+
 import AuthorBadge from '@/components/suggestions/AuthorBadge';
+import Badge from '@/components/ui/Badge';
+import type { Suggestion, User, UserPrefix } from '@/types';
 
 interface SuggestionDetailCardProps {
   suggestion: Suggestion;
@@ -21,17 +22,17 @@ interface SuggestionDetailCardProps {
   isPending: boolean;
   remainingSeconds: number;
   voteLoading: boolean;
-  user: any;
+  user: User | null;
   onVote: (type: 'upvote' | 'downvote', authorId: string) => void;
   onShowDelete: () => void;
   showDeleteBtn: boolean;
-  authorPrefixes?: any[];
+  authorPrefixes?: UserPrefix[];
 }
 
 export default function SuggestionDetailCard({
   suggestion,
   authorName,
-  authorColor,
+  authorColor: _authorColor,
   authorRole,
   statusLabel,
   statusColor,
@@ -123,12 +124,15 @@ export default function SuggestionDetailCard({
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeSanitize]}
             components={{
-              a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
-              code: ({node, inline, ...props}: any) => 
-                inline 
-                   ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
-                   : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code {...props} /></pre>,
-              img: ({node, ...props}) => <img className="rounded-xl max-w-full h-auto border border-white/10 mb-6 shadow-2xl" {...props} />
+              a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
+              code: ({ className, children, ...props }) => {
+                const isInline = !className;
+                return isInline 
+                   ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props}>{children}</code>
+                   : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code className={className} {...props}>{children}</code></pre>;
+              },
+              // eslint-disable-next-line @next/next/no-img-element
+              img: ({node: _node, ...props}) => <img alt={props.alt || ''} className="rounded-xl max-w-full h-auto border border-white/10 mb-6 shadow-2xl" {...props} />
             }}
           >
             {suggestion.description}

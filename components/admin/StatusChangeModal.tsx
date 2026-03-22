@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef,useState } from 'react';
 
 interface StatusChangeModalProps {
   isOpen: boolean;
@@ -24,8 +24,11 @@ export default function StatusChangeModal({
 
   useEffect(() => {
     if (isOpen) {
-      setComment('');
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      const timer = setTimeout(() => {
+        setComment('');
+        textareaRef.current?.focus();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 

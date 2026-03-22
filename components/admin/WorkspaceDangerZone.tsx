@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import pb from '@/lib/pocketbase';
-import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+
 import { useAuth } from '@/hooks/useAuth';
+import pb from '@/lib/pocketbase';
+import type { Workspace } from '@/types';
 
 interface WorkspaceDangerZoneProps {
-  workspace: any;
+  workspace: Workspace;
 }
 
 export default function WorkspaceDangerZone({ workspace }: WorkspaceDangerZoneProps) {
@@ -47,8 +49,9 @@ export default function WorkspaceDangerZone({ workspace }: WorkspaceDangerZonePr
       
       toast.success('Пространство успешно удалено');
       router.push('/');
-    } catch (err: any) {
-      if (err.status === 400 || err.status === 401) {
+    } catch (err: unknown) {
+      const error = err as { status?: number };
+      if (error.status === 400 || error.status === 401) {
         toast.error('Неверный пароль');
       } else {
         toast.error('Ошибка при удалении пространства');

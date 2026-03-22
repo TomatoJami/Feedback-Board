@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthContext } from '@/lib/auth-context';
-import pb from '@/lib/pocketbase';
-import { toast } from 'react-hot-toast';
 import { CheckIcon } from '@heroicons/react/20/solid';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+
 import Badge from '@/components/ui/Badge';
+import { useAuthContext } from '@/lib/auth-context';
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
 
 const PRICING_PLANS = [
   {
@@ -84,7 +86,7 @@ export default function Pricing({ showFree = true }: { showFree?: boolean }) {
       });
 
       if (!res.ok) {
-        const text = await res.text();
+        const _text = await res.text();
         toast.error('Ошибка при создании сессии');
         setLoadingPrice(null);
         return;
@@ -97,7 +99,7 @@ export default function Pricing({ showFree = true }: { showFree?: boolean }) {
         toast.error('Неверный ответ сервера');
       }
     } catch (err) {
-      console.error(err);
+      logger.error('Checkout error:', err);
       toast.error('Ошибка подключения к серверу оплаты');
     } finally {
       setLoadingPrice(null);

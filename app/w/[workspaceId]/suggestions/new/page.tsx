@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import { useParams,useRouter } from 'next/navigation';
+import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { logger } from '@/lib/logger';
-import { useRouter, useParams } from 'next/navigation';
-import pb from '@/lib/pocketbase';
-import { useAuth } from '@/hooks/useAuth';
-import { useCategories } from '@/hooks/useCategories';
-import { Settings } from '@/types';
+
 import ConfirmModal from '@/components/ConfirmModal';
 import MarkdownEditor from '@/components/MarkdownEditor';
+import { useAuth } from '@/hooks/useAuth';
+import { useCategories } from '@/hooks/useCategories';
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import { Settings } from '@/types';
 
 export default function NewSuggestionPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -37,7 +39,7 @@ export default function NewSuggestionPage() {
         const parsed = JSON.parse(draft);
         if (parsed.title) setTitle(parsed.title);
         if (parsed.description) setDescription(parsed.description);
-      } catch (e) {}
+      } catch (__e) {}
     }
   }, [workspaceId]);
 
@@ -81,7 +83,7 @@ export default function NewSuggestionPage() {
       }
     };
     fetchSettings();
-  }, [categories, categoryId]);
+  }, [categories, categoryId, workspaceId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,7 +127,7 @@ export default function NewSuggestionPage() {
       localStorage.removeItem(`fb_draft_suggestion_${workspaceId}`);
       toast.success('Предложение успешно опубликовано!');
       router.push(`/w/${workspaceId}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to create suggestion:', err);
       toast.error('Ошибка при создании предложения');
     } finally {
@@ -252,7 +254,7 @@ export default function NewSuggestionPage() {
             </div>
           ) : (
             <div className="relative overflow-hidden" style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}>
-              <img src={preview} alt="Preview" className="w-full max-h-64 object-contain" />
+              <Image src={preview} alt="Preview" width={800} height={500} unoptimized className="w-full max-h-64 object-contain" />
               <button 
                 type="button"
                 className="absolute top-4 right-4 p-2 rounded-full shadow-lg hover:scale-110 transition-transform"

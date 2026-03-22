@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import pb from '@/lib/pocketbase';
-import { logger } from '@/lib/logger';
-import type { Category } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
+import { useCallback, useEffect, useRef,useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import pb from '@/lib/pocketbase';
+import type { Category } from '@/types';
 
 export function useCategories(workspaceId?: string) {
   const [categories, setCategories] = useState<Category[]>([]);
