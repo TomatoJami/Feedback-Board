@@ -6,15 +6,30 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
+    // Verify authentication
     const pb = new PocketBase(POCKETBASE_URL);
+    const authHeader = req.headers.get('Authorization');
     const cookieStore = await cookies();
     const pbAuthCookie = cookieStore.get('pb_auth');
     
-    if (pbAuthCookie) {
-      pb.authStore.loadFromCookie(pbAuthCookie.value);
-    }
-    
-    if (!pb.authStore.isValid || !pb.authStore.model) {
+    try {
+      if (authHeader) {
+        pb.authStore.save(authHeader, null);
+      } else if (pbAuthCookie) {
+        pb.authStore.loadFromCookie(pbAuthCookie.value);
+      }
+
+      if (!pb.authStore.isValid) {
+        return new NextResponse('Unauthorized (Invalid Token)', { status: 401 });
+      }
+
+      await pb.collection('users').authRefresh();
+      
+      if (!pb.authStore.model) {
+        return new NextResponse('Unauthorized (No Model)', { status: 401 });
+      }
+    } catch (err) {
+      console.error('Portal Auth Error:', err);
       return new NextResponse('Unauthorized', { status: 401 });
     }
 

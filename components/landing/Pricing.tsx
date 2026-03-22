@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import toast from 'react-hot-toast';
+import { useAuthContext } from '@/lib/auth-context';
+import pb from '@/lib/pocketbase';
+import { toast } from 'react-hot-toast';
 import { CheckIcon } from '@heroicons/react/20/solid';
 import Badge from '@/components/ui/Badge';
 
@@ -45,7 +45,7 @@ const PRICING_PLANS = [
 
 export default function Pricing({ showFree = true }: { showFree?: boolean }) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const router = useRouter();
   const [loadingPrice, setLoadingPrice] = useState<string | null>(null);
 
@@ -62,21 +62,13 @@ export default function Pricing({ showFree = true }: { showFree?: boolean }) {
       return;
     }
 
-    console.log('--- Checkout Debug ---');
-    console.log('User:', user?.id);
-    console.log('Plan Name:', planName);
-    console.log('Billing Cycle:', billingCycle);
-
     setLoadingPrice(planName);
     try {
       const priceId = billingCycle === 'monthly' 
         ? process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID 
         : process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
 
-      console.log('Resolved Price ID:', priceId);
-
       if (!priceId) {
-        console.error('CRITICAL: Price ID is missing!');
         toast.error('Stripe Price ID не настроен');
         setLoadingPrice(null);
         return;
@@ -84,12 +76,16 @@ export default function Pricing({ showFree = true }: { showFree?: boolean }) {
 
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': pb.authStore.token,
+        },
         body: JSON.stringify({ priceId }),
       });
 
       if (!res.ok) {
-        toast.error('Ошибка создания сессии оплаты');
+        const text = await res.text();
+        toast.error('Ошибка при создании сессии');
         setLoadingPrice(null);
         return;
       }
