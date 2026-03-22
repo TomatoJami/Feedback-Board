@@ -60,14 +60,22 @@ export default function Pricing() {
       return;
     }
 
+    console.log('--- Checkout Debug ---');
+    console.log('User:', user?.id);
+    console.log('Plan Name:', planName);
+    console.log('Billing Cycle:', billingCycle);
+
     setLoadingPrice(planName);
     try {
       const priceId = billingCycle === 'monthly' 
         ? process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID 
         : process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
 
+      console.log('Resolved Price ID:', priceId);
+
       if (!priceId) {
-        toast.error('Stripe Price ID не настроен в .env.local');
+        console.error('CRITICAL: Price ID is missing!');
+        toast.error('Stripe Price ID не настроен');
         setLoadingPrice(null);
         return;
       }
