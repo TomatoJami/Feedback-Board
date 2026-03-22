@@ -69,7 +69,9 @@ export async function POST(req: Request) {
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
               stripe_price_id: priceId,
-              stripe_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+              stripe_current_period_end: (subscription as any).current_period_end 
+                ? new Date((subscription as any).current_period_end * 1000).toISOString() 
+                : null,
               plan: planType,
             });
             
@@ -97,7 +99,9 @@ export async function POST(req: Request) {
             await pb.collection('users').update(record.id, {
               stripe_subscription_id: subscription.id,
               stripe_price_id: priceId,
-              stripe_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+              stripe_current_period_end: (subscription as any).current_period_end
+                ? new Date((subscription as any).current_period_end * 1000).toISOString()
+                : null,
               plan: planType,
             });
             console.log(`Updated subscription for user ${record.id}`);
