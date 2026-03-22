@@ -319,7 +319,6 @@
         "system": false,
         "type": "autodate"
       },
-
       {
         "hidden": false,
         "id": "usr_plan_1773954589911",
@@ -347,6 +346,59 @@
           "active",
           "blocked"
         ]
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_cust_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_customer_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_sub_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_subscription_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_price_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_price_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "strp_period_end",
+        "max": "",
+        "min": "",
+        "name": "stripe_current_period_end",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
       }
     ],
     "indexes": [
@@ -1747,106 +1799,6 @@
     "system": false
   },
   {
-    "id": "pbc_7982372053",
-    "listRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
-    "viewRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
-    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
-    "updateRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
-    "deleteRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
-    "name": "workspaces",
-    "type": "base",
-    "fields": [
-      {
-        "autogeneratePattern": "[a-z0-9]{15}",
-        "hidden": false,
-        "id": "text3208210256",
-        "max": 15,
-        "min": 15,
-        "name": "id",
-        "pattern": "^[a-z0-9]+$",
-        "presentable": false,
-        "primaryKey": true,
-        "required": true,
-        "system": true,
-        "type": "text"
-      },
-      {
-        "autogeneratePattern": "",
-        "hidden": false,
-        "id": "txt_ws_name",
-        "max": 50,
-        "min": 1,
-        "name": "name",
-        "pattern": "",
-        "presentable": true,
-        "primaryKey": false,
-        "required": true,
-        "system": false,
-        "type": "text"
-      },
-      {
-        "autogeneratePattern": "",
-        "hidden": false,
-        "id": "txt_ws_slug",
-        "max": 50,
-        "min": 1,
-        "name": "slug",
-        "pattern": "^[a-z0-9-]+$",
-        "presentable": false,
-        "primaryKey": false,
-        "required": true,
-        "system": false,
-        "type": "text"
-      },
-      {
-        "hidden": false,
-        "id": "bool_ws_private",
-        "name": "isPrivate",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "bool"
-      },
-      {
-        "cascadeDelete": false,
-        "collectionId": "_pb_users_auth_",
-        "hidden": false,
-        "id": "rel_ws_owner",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "owner",
-        "presentable": false,
-        "required": true,
-        "system": false,
-        "type": "relation"
-      },
-      {
-        "hidden": false,
-        "id": "autodate2990389176",
-        "name": "created",
-        "onCreate": true,
-        "onUpdate": false,
-        "presentable": false,
-        "system": false,
-        "type": "autodate"
-      },
-      {
-        "hidden": false,
-        "id": "autodate3332085495",
-        "name": "updated",
-        "onCreate": true,
-        "onUpdate": true,
-        "presentable": false,
-        "system": false,
-        "type": "autodate"
-      }
-    ],
-    "indexes": [
-      "CREATE UNIQUE INDEX `idx_ws_slug` ON `workspaces` (`slug`)"
-    ],
-    "system": false
-  },
-  {
     "id": "pbc_536962552",
     "listRule": "@request.auth.id != '' && (workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin')",
     "viewRule": "(workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
@@ -1947,6 +1899,106 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX `idx_wsm_ws_usr` ON `workspace_members` (`workspace`, `user`)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_7982372053",
+    "listRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "updateRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "name": "workspaces",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_ws_name",
+        "max": 50,
+        "min": 1,
+        "name": "name",
+        "pattern": "",
+        "presentable": true,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_ws_slug",
+        "max": 50,
+        "min": 1,
+        "name": "slug",
+        "pattern": "^[a-z0-9-]+$",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool_ws_private",
+        "name": "isPrivate",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "rel_ws_owner",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_ws_slug` ON `workspaces` (`slug`)"
     ],
     "system": false
   }

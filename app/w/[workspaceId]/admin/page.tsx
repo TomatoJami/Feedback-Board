@@ -541,6 +541,7 @@ export default function AdminPage() {
               prefixColorPickerRef={prefixColorPickerRef}
               statusColors={STATUS_COLORS}
               isReadOnly={userRole === 'moderator'}
+              isPro={user?.plan === 'pro'}
             />
           </>
         )}
@@ -555,6 +556,7 @@ export default function AdminPage() {
             onUpdateMemberPrefix={handleUpdateMemberPrefix}
             onUpdateMemberRole={handleUpdateMemberRole}
             isPublic={!activeWorkspace?.isPrivate}
+            isPro={user?.plan === 'pro'}
           />
         )}
 

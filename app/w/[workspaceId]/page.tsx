@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import pb, { POCKETBASE_URL } from '@/lib/pocketbase';
 import SuggestionCard from '@/components/SuggestionCard';
+import SuggestionSkeleton from '@/components/SuggestionSkeleton';
 import HomeHeader from '@/components/HomeHeader';
 import FilterSection from '@/components/FilterSection';
 import EmptyState from '@/components/EmptyState';
@@ -93,11 +94,14 @@ function HomeContent() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="h-10 w-48 bg-white/5 animate-pulse rounded-lg" />
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 w-full bg-white/5 animate-pulse rounded-2xl" />
-        ))}
+      <div className="w-full flex flex-col gap-12">
+        <div className="h-12 w-64 bg-zinc-800/50 animate-pulse rounded-xl" />
+        <div className="h-14 w-full bg-zinc-800/50 animate-pulse rounded-xl" />
+        <div className="suggestions-list grid gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <SuggestionSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -138,11 +142,14 @@ function HomeContent() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col gap-6">
-        <div className="h-10 w-48 bg-white/5 animate-pulse rounded-lg" />
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 w-full bg-white/5 animate-pulse rounded-2xl" />
-        ))}
+      <div className="w-full flex flex-col gap-12">
+        <div className="h-12 w-64 bg-zinc-800/50 animate-pulse rounded-xl" />
+        <div className="h-14 w-full bg-zinc-800/50 animate-pulse rounded-xl" />
+        <div className="suggestions-list grid gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <SuggestionSkeleton key={i} />
+          ))}
+        </div>
       </div>
     }>
       <HomeContent />

@@ -14,6 +14,7 @@ interface PrefixManagementProps {
   prefixColorPickerRef: React.RefObject<HTMLDivElement | null>;
   statusColors: string[];
   isReadOnly?: boolean;
+  isPro?: boolean;
 }
 
 export default function PrefixManagement({
@@ -30,6 +31,7 @@ export default function PrefixManagement({
   prefixColorPickerRef,
   statusColors,
   isReadOnly = false,
+  isPro = false,
 }: PrefixManagementProps) {
   return (
     <section style={{ marginBottom: '48px' }}>
@@ -41,7 +43,7 @@ export default function PrefixManagement({
         padding: '24px',
         marginBottom: '20px'
       }}>
-        {!isReadOnly && (
+        {!isReadOnly && isPro && (
           <form onSubmit={onAddPrefix} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
             <input
               type="text"
@@ -127,6 +129,12 @@ export default function PrefixManagement({
               {isAddingPrefix ? '...' : 'Добавить'}
             </button>
           </form>
+        )}
+        {!isReadOnly && !isPro && (
+          <div className="flex flex-col items-center justify-center p-6 border border-dashed border-white/10 rounded-xl bg-white/[0.02] mb-6">
+            <div className="text-zinc-500 text-sm mb-3">Кастомные префиксы доступны только в плане PRO</div>
+            <a href="/#pricing" className="btn btn-sm btn-primary">Улучшить тариф</a>
+          </div>
         )}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>

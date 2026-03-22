@@ -29,6 +29,27 @@ export default function NewSuggestionPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem(`fb_draft_suggestion_${workspaceId}`);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.title) setTitle(parsed.title);
+        if (parsed.description) setDescription(parsed.description);
+      } catch (e) {}
+    }
+  }, [workspaceId]);
+
+  // Save draft on change
+  useEffect(() => {
+    if (title || description) {
+      localStorage.setItem(`fb_draft_suggestion_${workspaceId}`, JSON.stringify({ title, description }));
+    } else {
+      localStorage.removeItem(`fb_draft_suggestion_${workspaceId}`);
+    }
+  }, [title, description, workspaceId]);
+
   // Fetch categories and settings when loaded
   useEffect(() => {
     if (categories.length > 0 && !categoryId) {
@@ -101,6 +122,7 @@ export default function NewSuggestionPage() {
       }
 
       await pb.collection('suggestions').create(formData);
+      localStorage.removeItem(`fb_draft_suggestion_${workspaceId}`);
       toast.success('Предложение успешно опубликовано!');
       router.push(`/w/${workspaceId}`);
     } catch (err: any) {

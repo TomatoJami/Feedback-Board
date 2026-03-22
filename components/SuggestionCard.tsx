@@ -38,7 +38,7 @@ interface SuggestionCardProps {
 
 export default function SuggestionCard({ suggestion, workspaceSlug }: SuggestionCardProps) {
   const { user } = useAuth();
-  const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote } = useVote(suggestion.id);
+  const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote, optimisticScore } = useVote(suggestion.id, suggestion.votes_count ?? 0);
 
   const dynamicStatus = suggestion.expand?.status_id;
   const statusColor = dynamicStatus?.color || '#3b82f6'; // Default blue for Open or missing
@@ -48,7 +48,7 @@ export default function SuggestionCard({ suggestion, workspaceSlug }: Suggestion
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
 
   const authorName = suggestion.expand?.author?.name || 'Аноним';
-  const score = suggestion.votes_count ?? 0;
+  const score = optimisticScore;
   const scoreClass = score > 0 ? 'positive' : score < 0 ? 'negative' : 'zero';
 
   return (

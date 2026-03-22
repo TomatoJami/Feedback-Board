@@ -13,6 +13,7 @@ interface WorkspaceMemberManagementProps {
   onUpdateMemberPrefix: (memberId: string, prefixIds: string[]) => Promise<void>;
   onUpdateMemberRole: (memberId: string, role: string) => Promise<void>;
   isPublic?: boolean;
+  isPro?: boolean;
 }
 
 export default function WorkspaceMemberManagement({
@@ -23,7 +24,8 @@ export default function WorkspaceMemberManagement({
   onMembersUpdated,
   onUpdateMemberPrefix,
   onUpdateMemberRole,
-  isPublic = false
+  isPublic = false,
+  isPro = false
 }: WorkspaceMemberManagementProps) {
   const [inviteInput, setInviteInput] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'moderator' | 'user'>('user');
@@ -135,7 +137,7 @@ export default function WorkspaceMemberManagement({
           <div style={{ width: '180px' }}>
             <CustomSelect
               options={[
-                { id: 'user', name: 'Пользователь' },
+                { id: 'user', name: isPublic ? 'Резидент' : 'Пользователь' },
                 { id: 'moderator', name: 'Модератор' },
                 { id: 'admin', name: 'Админ' }
               ]}
@@ -237,13 +239,13 @@ export default function WorkspaceMemberManagement({
                         </div>
                         {member.user === currentUser.id ? (
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>
-                            {member.role === 'admin' ? 'Админ' : member.role === 'moderator' ? 'Модератор' : 'Пользователь'}
+                            {member.role === 'admin' ? 'Админ' : member.role === 'moderator' ? 'Модератор' : isPublic ? 'Участник' : 'Пользователь'}
                           </div>
                         ) : (
                           <div style={{ width: '140px', marginTop: '4px' }}>
                             <CustomSelect
                               options={[
-                                { id: 'user', name: 'Пользователь' },
+                                { id: 'user', name: isPublic ? 'Участник' : 'Пользователь' },
                                 { id: 'moderator', name: 'Модератор' },
                                 { id: 'admin', name: 'Админ' }
                               ]}

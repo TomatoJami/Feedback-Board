@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import toast from 'react-hot-toast';
 import { CheckIcon } from '@heroicons/react/20/solid';
 import Badge from '@/components/ui/Badge';
 
@@ -42,6 +45,58 @@ const PRICING_PLANS = [
 
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const { user } = useAuth();
+  const router = useRouter();
+  const [loadingPrice, setLoadingPrice] = useState<string | null>(null);
+
+  const handleCheckout = async (planName: string) => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    if (planName === 'Free') {
+      router.push('/');
+      return;
+    }
+
+    setLoadingPrice(planName);
+    try {
+      const priceId = billingCycle === 'monthly' 
+        ? process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID 
+        : process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
+
+      if (!priceId) {
+        toast.error('Stripe Price ID не настроен в .env.local');
+        setLoadingPrice(null);
+        return;
+      }
+
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId }),
+      });
+
+      if (!res.ok) {
+        toast.error('Ошибка создания сессии оплаты');
+        setLoadingPrice(null);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error('Неверный ответ сервера');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Ошибка подключения к серверу оплаты');
+    } finally {
+      setLoadingPrice(null);
+    }
+  };
 
   return (
     <div id="pricing" className="w-full max-w-6xl mx-auto relative z-10 px-6 group/section">
@@ -172,18 +227,19 @@ export default function Pricing() {
               ))}
             </ul>
 
-            <Link
-              href={plan.href}
+            <button
+              onClick={() => handleCheckout(plan.name)}
+              disabled={loadingPrice === plan.name}
               className={`btn w-full !py-5 !text-lg !rounded-3xl transition-all duration-500 font-black tracking-tight relative z-20 overflow-hidden group/btn flex items-center justify-center ${plan.popular
                   ? 'btn-primary shadow-2xl shadow-indigo-500/40 hover:scale-[1.05]'
                   : 'btn-ghost border border-white/10 bg-white/5 hover:bg-white/10 hover:scale-[1.02]'
                 }`}
             >
-              <span className="relative z-10">{plan.cta}</span>
+              <span className="relative z-10">{loadingPrice === plan.name ? 'Загрузка...' : plan.cta}</span>
               {plan.popular && (
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
               )}
-            </Link>
+            </button>
 
             {plan.popular && (
               <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full group-hover:bg-indigo-500/20 transition-all duration-700 pointer-events-none" />

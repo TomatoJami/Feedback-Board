@@ -43,9 +43,10 @@ export default function SuggestionDetailPage() {
   const workspaceId = params.workspaceId as string;
 
   const { user } = useAuth();
-  const { voteType, isRevocable, remainingSeconds, isLoading: voteLoading, vote, revokeVote } = useVote(id);
-
+  
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  
+  const { voteType, isRevocable, remainingSeconds, isLoading: voteLoading, vote, revokeVote, optimisticScore } = useVote(id, suggestion?.votes_count ?? 0);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [workspaceRole, setWorkspaceRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
@@ -164,7 +165,7 @@ export default function SuggestionDetailPage() {
   const authorId = suggestion.author;
   const authorRole = suggestion.expand?.author?.role;
   const authorColor = getColor(authorId);
-  const score = suggestion.votes_count ?? 0;
+  const score = optimisticScore;
   const scoreClass = score > 0 ? 'positive' : score < 0 ? 'negative' : 'zero';
 
   const imageUrl = suggestion.image

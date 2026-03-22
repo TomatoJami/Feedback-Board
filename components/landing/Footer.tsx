@@ -15,9 +15,9 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="flex flex-wrap justify-between md:justify-around lg:justify-between gap-12 mb-16 w-full max-w-4xl mx-auto">
           <div>
-            <h4 className="text-white font-bold mb-8 text-sm uppercase tracking-[0.2em] opacity-30">Продукт</h4>
+            <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Продукт</h4>
             <ul className="space-y-2">
               <li><Link href="#demo-preview" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Функции<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
               <li><Link href="#pricing" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Цены<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
@@ -26,7 +26,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-8 text-sm uppercase tracking-[0.2em] opacity-30">Ресурсы</h4>
+            <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Ресурсы</h4>
             <ul className="space-y-2">
               <li><Link href="#faq" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">FAQ<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
               <li><Link href="/auth/login" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Документация<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
@@ -35,7 +35,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-8 text-sm uppercase tracking-[0.2em] opacity-30">Технологии</h4>
+            <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Технологии</h4>
             <ul className="space-y-2">
               <li><span className="text-zinc-600 text-sm font-medium block">Next.js 15</span></li>
               <li><span className="text-zinc-600 text-sm font-medium block">PocketBase</span></li>
@@ -44,7 +44,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-8 text-sm uppercase tracking-[0.2em] opacity-30">Право</h4>
+            <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Право</h4>
             <ul className="space-y-2">
               <li><Link href="/auth/register" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Privacy<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
               <li><Link href="/auth/register" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Terms<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
