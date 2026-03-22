@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useVote } from '@/hooks/useVote';
 import { useAuth } from '@/hooks/useAuth';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
+import Badge from '@/components/ui/Badge';
 import type { Suggestion } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -14,26 +15,40 @@ const STATUS_COLORS: Record<string, string> = {
   Completed: '#10b981',
 };
 
+// Deterministic color from string
+function getColor(id: string): string {
+  if (!id) return '#3f3f46';
+  const colors = [
+    '#6366f1', '#a855f7', '#ec4899', '#f43f5e',
+    '#f97316', '#eab308', '#22c55e', '#14b8a6',
+    '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef',
+  ];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
 
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
+  workspaceSlug?: string;
 }
 
-export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
+export default function SuggestionCard({ suggestion, workspaceSlug }: SuggestionCardProps) {
   const { user } = useAuth();
-  const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote } = useVote(suggestion.id);
+  const { voteType, isRevocable, remainingSeconds, isLoading, vote, revokeVote, optimisticScore } = useVote(suggestion.id, suggestion.votes_count ?? 0);
 
   const dynamicStatus = suggestion.expand?.status_id;
-  const isLegacyOpen = !suggestion.status || suggestion.status.toLowerCase() === 'open';
-  const statusColor = dynamicStatus?.color || (!isLegacyOpen ? STATUS_COLORS[suggestion.status] : null) || '#6b7280';
-  const statusLabel = dynamicStatus?.name || (!isLegacyOpen ? suggestion.status.replace('_', ' ') : 'Без статуса');
+  const statusColor = dynamicStatus?.color || '#3b82f6'; // Default blue for Open or missing
+  const statusLabel = dynamicStatus?.name || 'Открыто';
   
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
 
   const authorName = suggestion.expand?.author?.name || 'Аноним';
-  const score = suggestion.votes_count ?? 0;
+  const score = optimisticScore;
   const scoreClass = score > 0 ? 'positive' : score < 0 ? 'negative' : 'zero';
 
   return (
@@ -82,26 +97,29 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
       </div>
 
       {/* Content column — wrapped in Link */}
-      <Link href={`/suggestions/${suggestion.id}`} className="card-content suggestion-card-link">
+      <Link href={`/w/${workspaceSlug || suggestion.workspace_id}/suggestions/${suggestion.id}`} className="card-content suggestion-card-link">
         <div className="card-header">
           <div className="card-badges">
-            <span className="category-badge">
+            <Badge variant="zinc" size="md" className="bg-zinc-500/10 border-zinc-500/20 text-zinc-400">
               {categoryIcon} {categoryName}
-            </span>
-            <span 
-              className="status-badge" 
-              style={{ 
-                '--status-color': statusColor,
-                display: 'inline-flex',
-                alignItems: 'center',
-                flexDirection: 'row',
-                gap: '8px',
-                whiteSpace: 'nowrap'
-              } as React.CSSProperties}
+            </Badge>
+            <Badge 
+              variant="zinc" 
+              size="md" 
+              style={{ paddingLeft: '10px' }}
             >
-              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-color)', flexShrink: 0 }} />
+              <span style={{ 
+                display: 'inline-block', 
+                width: '6px', 
+                height: '6px', 
+                borderRadius: '50%', 
+                background: statusColor, 
+                flexShrink: 0,
+                marginRight: '6px',
+                boxShadow: `0 0 8px ${statusColor}`
+              }} />
               {statusLabel}
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -110,7 +128,7 @@ export default function SuggestionCard({ suggestion }: SuggestionCardProps) {
         <div className="card-footer">
           <div className="card-author">
             <div className="author-avatar-placeholder" style={{ 
-              background: suggestion.expand?.author?.avatar ? 'transparent' : '#3f3f46',
+              background: suggestion.expand?.author?.avatar ? 'transparent' : getColor(suggestion.author || ''),
               overflow: 'hidden',
               padding: 0
             }}>

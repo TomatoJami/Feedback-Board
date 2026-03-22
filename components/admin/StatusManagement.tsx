@@ -12,7 +12,6 @@ interface StatusManagementProps {
   isAddingStat: boolean;
   onAddStatus: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onDeleteStatus: (id: string) => Promise<void>;
-  onSeedStatuses: () => Promise<void>;
   colorPickerRef: React.RefObject<HTMLDivElement | null>;
   statusColors: string[];
 }
@@ -28,7 +27,6 @@ export default function StatusManagement({
   isAddingStat,
   onAddStatus,
   onDeleteStatus,
-  onSeedStatuses,
   colorPickerRef,
   statusColors,
 }: StatusManagementProps) {
@@ -36,14 +34,6 @@ export default function StatusManagement({
     <section style={{ marginBottom: '48px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Статусы</h2>
-        {statuses.length === 0 && (
-          <button 
-            onClick={onSeedStatuses}
-            style={{ fontSize: '0.75rem', color: '#a1a1aa', border: '1px solid #3f3f46', padding: '4px 10px', borderRadius: '6px', background: 'transparent', cursor: 'pointer' }}
-          >
-            Инициализировать стандартные
-          </button>
-        )}
       </div>
       <div style={{
         background: 'var(--bg-secondary)',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import pb from '@/lib/pocketbase';
@@ -10,7 +10,7 @@ import { useVote } from '@/hooks/useVote';
 import { useComments } from '@/hooks/useComments';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
-import type { Suggestion, SuggestionComment, Settings } from '@/types';
+import type { Suggestion, Settings } from '@/types';
 import SuggestionDetailCard from '@/components/SuggestionDetailCard';
 import CommentsSection from '@/components/CommentsSection';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
@@ -37,19 +37,46 @@ function getColor(id: string): string {
 }
 
 export default function SuggestionDetailPage() {
-  const params = useParams();
   const router = useRouter();
+  const params = useParams();
   const id = params.id as string;
+  const workspaceId = params.workspaceId as string;
 
   const { user } = useAuth();
-  const { voteType, isRevocable, remainingSeconds, isLoading: voteLoading, vote, revokeVote } = useVote(id);
-  const { comments, isLoading: commentsLoading, userVotes, addComment, voteComment } = useComments(id);
-
+  
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  
+  const { voteType, isRevocable, remainingSeconds, isLoading: voteLoading, vote, revokeVote, optimisticScore } = useVote(id, suggestion?.votes_count ?? 0);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [sending, setSending] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [workspaceRole, setWorkspaceRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
+  const [authorPrefixes, setAuthorPrefixes] = useState<any[]>([]);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  // Check workspace access first to redirect unauthorized users
+  useEffect(() => {
+    async function checkAccess() {
+      try {
+        await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+        setCheckingAccess(false);
+      } catch (err: any) {
+        if (!user) {
+          router.push('/auth/login');
+        } else {
+          router.push('/');
+        }
+      }
+    }
+    const timer = setTimeout(() => {
+       if (!user) checkAccess();
+    }, 100);
+    // Let useAuth initialize before checking
+    if (user !== undefined) {
+      clearTimeout(timer);
+      checkAccess();
+    }
+    return () => clearTimeout(timer);
+  }, [workspaceId, user, router]);
   
   // Deletion logic
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -57,54 +84,48 @@ export default function SuggestionDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    if (checkingAccess) return;
     (async () => {
       try {
-        const [record, settingsRecords] = await Promise.all([
+        const [suggestionRecord, settingsRecords, memberRecord] = await Promise.all([
           pb.collection('suggestions').getOne<Suggestion>(id, {
-            expand: 'author.prefixes,category_id,status_id',
+            expand: 'author,category_id,status_id,assigned_user,workspace_id',
             requestKey: null,
           }),
           pb.collection('settings').getFullList<Settings>({ 
+            filter: `workspace_id = "${workspaceId}" || workspace_id.slug = "${workspaceId}"`,
             limit: 1,
             requestKey: null
-          })
+          }),
+          user ? pb.collection('workspace_members').getFirstListItem(
+            `workspace = "${workspaceId}" && user = "${user.id}"`
+          ).catch(() => null) : Promise.resolve(null)
         ]);
-        setSuggestion(record);
+        if (suggestionRecord.workspace_id !== workspaceId && suggestionRecord.expand?.workspace_id?.slug !== workspaceId) {
+          throw new Error('Suggestion does not belong to this workspace');
+        }
+        setSuggestion(suggestionRecord);
         if (settingsRecords.length > 0) setSettings(settingsRecords[0]);
+        if (memberRecord) {
+          setWorkspaceRole(memberRecord.role as any);
+        }
+        try {
+          const authMember = await pb.collection('workspace_members').getFirstListItem(
+            `workspace = "${suggestionRecord.workspace_id}" && user = "${suggestionRecord.author}"`,
+            { expand: 'prefixes', requestKey: null }
+          );
+          if (authMember?.expand?.prefixes) {
+            setAuthorPrefixes(authMember.expand.prefixes);
+          }
+        } catch(e) {}
       } catch (err) {
         logger.error('Fetch error:', err);
-        router.push('/');
+        router.push(`/w/${workspaceId}`);
       } finally {
         setLoading(false);
       }
     })();
-  }, [id, router]);
-
-  const handleComment = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!user || !commentText.trim()) return;
-    setSending(true);
-    try {
-      await addComment(user.id, commentText.trim());
-      
-      // Notify author if the commenter is not the author
-      if (suggestion && suggestion.author !== user.id) {
-        await pb.collection('notifications').create({
-          user: suggestion.author,
-          message: `Новый комментарий к вашему предложению "${suggestion.title}": ${commentText.trim().substring(0, 50)}${commentText.length > 50 ? '...' : ''}`,
-          read: false,
-        });
-      }
-
-      setCommentText('');
-      toast.success('Комментарий добавлен!');
-    } catch (err: any) {
-      logger.error('Comment failed:', err);
-      toast.error('Ошибка при добавлении комментария');
-    } finally {
-      setSending(false);
-    }
-  };
+  }, [id, router, user, workspaceId, checkingAccess]);
 
   const handleDelete = async () => {
     if (!suggestion || deleteInput !== suggestion.title || isDeleting) return;
@@ -113,7 +134,7 @@ export default function SuggestionDetailPage() {
     try {
       await pb.collection('suggestions').delete(id);
       toast.success('Предложение удалено');
-      router.push('/');
+      router.push(`/w/${workspaceId}`);
     } catch (err: any) {
       logger.error('Delete failed:', err);
       toast.error('Ошибка при удалении');
@@ -123,7 +144,7 @@ export default function SuggestionDetailPage() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingAccess) {
     return (
       <div className="detail-container w-full !max-w-full">
         <div className="h-10 w-32 bg-white/5 animate-pulse rounded-lg mb-6" />
@@ -135,9 +156,8 @@ export default function SuggestionDetailPage() {
   if (!suggestion) return null;
 
   const dynamicStatus = suggestion.expand?.status_id;
-  const isLegacyOpen = !suggestion.status || suggestion.status.toLowerCase() === 'open';
-  const statusColor = dynamicStatus?.color || (!isLegacyOpen ? STATUS_COLORS[suggestion.status] : null) || '#6b7280';
-  const statusLabel = dynamicStatus?.name || (!isLegacyOpen ? suggestion.status.replace('_', ' ') : 'Без статуса');
+  const statusColor = dynamicStatus?.color || '#3b82f6';
+  const statusLabel = dynamicStatus?.name || 'Открыто';
   
   const categoryName = suggestion.expand?.category_id?.name || 'Без категории';
   const categoryIcon = suggestion.expand?.category_id?.icon || '📋';
@@ -145,7 +165,7 @@ export default function SuggestionDetailPage() {
   const authorId = suggestion.author;
   const authorRole = suggestion.expand?.author?.role;
   const authorColor = getColor(authorId);
-  const score = suggestion.votes_count ?? 0;
+  const score = optimisticScore;
   const scoreClass = score > 0 ? 'positive' : score < 0 ? 'negative' : 'zero';
 
   const imageUrl = suggestion.image
@@ -153,20 +173,31 @@ export default function SuggestionDetailPage() {
     : null;
 
   const isAuthor = user?.id === suggestion.author;
-  const isAdmin = user?.role === 'admin';
-  const deletableArray = Array.isArray(settings?.deletable_statuses) ? settings.deletable_statuses : [];
-  const isDeletable = deletableArray.length === 0 || 
-                     (suggestion.status_id && deletableArray.includes(suggestion.status_id));
-  const showDeleteBtn = !!(isAdmin || (isAuthor && isDeletable));
+  const isAdmin = user?.role === 'admin' || workspaceRole === 'admin';
+  const isModerator = workspaceRole === 'moderator';
+
+  const canDeleteSuggestion = 
+    isAdmin || 
+    isModerator ||
+    (isAuthor && (suggestion?.expand?.status_id?.name === 'Open' || !suggestion.status_id));
+
+  const showDeleteBtn = canDeleteSuggestion;
 
   return (
     <div className="detail-container w-full !max-w-full">
-      <Link href="/" className="detail-back">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Назад к предложениям
-      </Link>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+        <Link href={`/w/${workspaceId}`} style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>
+          {suggestion.expand?.workspace_id?.name || 'Воркспейс'}
+        </Link>
+        <span>/</span>
+        <Link href={`/w/${workspaceId}`} style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>
+          Предложения
+        </Link>
+        <span>/</span>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+          {suggestion.title}
+        </span>
+      </nav>
 
       <SuggestionDetailCard
         suggestion={suggestion}
@@ -189,20 +220,16 @@ export default function SuggestionDetailPage() {
         onRevoke={revokeVote}
         onShowDelete={() => setShowDeleteModal(true)}
         showDeleteBtn={showDeleteBtn}
+        authorPrefixes={authorPrefixes}
       />
 
-      <CommentsSection
-        comments={comments}
-        isLoading={commentsLoading}
-        user={user}
-        userVotes={userVotes}
-        commentText={commentText}
-        setCommentText={setCommentText}
-        sending={sending}
-        onComment={handleComment}
-        onVote={voteComment}
-        onReply={addComment}
-        authorId={authorId}
+      <CommentsSection 
+        suggestionId={id} 
+        user={user} 
+        isAdmin={isAdmin}
+        workspaceRole={workspaceRole}
+        workspaceId={suggestion.workspace_id}
+        suggestionAuthorId={suggestion.author}
       />
 
       {showDeleteModal && (

@@ -6,13 +6,14 @@ export interface Option {
   color?: string;
 }
 
-export function CustomSelect({ options, value, onChange, placeholder, disabled, maxWidth }: {
+export function CustomSelect({ options, value, onChange, placeholder, disabled, maxWidth, variant }: {
   options: Option[];
   value: string;
   onChange: (val: string) => void;
   placeholder: string;
   disabled?: boolean;
   maxWidth?: string;
+  variant?: 'default' | 'small';
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +41,7 @@ export function CustomSelect({ options, value, onChange, placeholder, disabled, 
           background: 'var(--bg-tertiary)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
+          padding: variant === 'small' ? '6px 10px' : '10px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -50,12 +51,13 @@ export function CustomSelect({ options, value, onChange, placeholder, disabled, 
           transition: 'all 0.2s ease',
           opacity: disabled ? 0.6 : 1,
           whiteSpace: 'nowrap',
-          gap: '8px'
+          gap: '8px',
+          minHeight: variant === 'small' ? '32px' : '46px'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden' }}>
           {selected?.color && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: selected.color, flexShrink: 0 }} />}
-          <span style={{ fontSize: '0.9rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: variant === 'small' ? '0.8rem' : '0.9rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {selected ? selected.name : placeholder}
           </span>
         </div>
@@ -120,12 +122,13 @@ export function CustomSelect({ options, value, onChange, placeholder, disabled, 
   );
 }
 
-export function CustomMultiSelect({ options, selectedIds, onChange, placeholder, disabled }: {
+export function CustomMultiSelect({ options, selectedIds, onChange, placeholder, disabled, variant }: {
   options: Option[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   placeholder: string;
   disabled?: boolean;
+  variant?: 'default' | 'small';
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,7 +167,7 @@ export function CustomMultiSelect({ options, selectedIds, onChange, placeholder,
           background: 'var(--bg-tertiary)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
+          padding: variant === 'small' ? '6px 12px' : '10px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -173,12 +176,12 @@ export function CustomMultiSelect({ options, selectedIds, onChange, placeholder,
           outline: 'none',
           transition: 'all 0.2s ease',
           opacity: disabled ? 0.6 : 1,
-          minHeight: '46px'
+          minHeight: variant === 'small' ? '32px' : '46px'
         }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
           {selectedCount === 0 ? (
-            <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{placeholder}</span>
+            <span style={{ fontSize: variant === 'small' ? '0.8rem' : '0.9rem', fontWeight: 500 }}>{placeholder}</span>
           ) : (
             safeSelectedIds.map(id => {
               const opt = options.find(o => o.id === id);
@@ -281,6 +284,71 @@ export function CustomMultiSelect({ options, selectedIds, onChange, placeholder,
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+export function StatCard({ title, value, subtext, icon, color }: {
+  title: string;
+  value: string | number;
+  subtext?: string;
+  icon?: React.ReactNode;
+  color?: string;
+}) {
+  return (
+    <div style={{
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-color)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '24px',
+      flex: 1,
+      minWidth: '240px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '100px',
+        height: '100px',
+        background: color ? `${color}10` : 'rgba(255,255,255,0.03)',
+        borderRadius: '0 0 0 100%',
+        zIndex: 0
+      }} />
+      
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          {icon && (
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '12px', 
+              background: 'rgba(255,255,255,0.05)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: color || 'white'
+            }}>
+              {icon}
+            </div>
+          )}
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {title}
+          </span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+          <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>
+            {value}
+          </span>
+          {subtext && (
+            <span style={{ fontSize: '0.875rem', color: '#71717a', fontWeight: 500 }}>
+              {subtext}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

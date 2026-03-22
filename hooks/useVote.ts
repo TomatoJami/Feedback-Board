@@ -28,11 +28,12 @@ interface UseVoteReturn {
   remainingSeconds: number;
   isLoading: boolean;
   cooldownActive: boolean;
+  optimisticScore: number;
   vote: (type: VoteType, authorId?: string) => Promise<void>;
   revokeVote: () => Promise<void>;
 }
 
-export function useVote(suggestionId: string): UseVoteReturn {
+export function useVote(suggestionId: string, initialScore?: number): UseVoteReturn {
   const { user } = useAuth();
   const [voteType, setVoteType] = useState<VoteType | null>(null);
   const [voteId, setVoteId] = useState<string | null>(null);
@@ -40,8 +41,17 @@ export function useVote(suggestionId: string): UseVoteReturn {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [cooldownActive, setCooldownActive] = useState(false);
+  const [optimisticScore, setOptimisticScore] = useState(initialScore ?? 0);
+  
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Sync initialScore if it changes from external sources (like realtime subscriptions)
+  useEffect(() => {
+    if (initialScore !== undefined) {
+      setOptimisticScore(initialScore);
+    }
+  }, [initialScore]);
 
   // Check existing vote
   useEffect(() => {
@@ -117,19 +127,38 @@ export function useVote(suggestionId: string): UseVoteReturn {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // If already voted same type → do nothing (use revoke)
-      if (voteType === type && voteId) {
-        setIsLoading(false);
-        return;
-      }
+    // If already voted same type → do nothing
+    if (voteType === type && voteId) {
+      return;
+    }
 
+    // Capture previous state for fallback
+    const previousVoteType = voteType;
+    const previousScore = optimisticScore;
+
+    // Optimistically update UI
+    let newScore = optimisticScore;
+    if (previousVoteType) {
+      // Remove old vote effect
+      newScore += previousVoteType === 'upvote' ? -1 : 1;
+    }
+    // Add new vote effect
+    newScore += type === 'upvote' ? 1 : -1;
+
+    setVoteType(type);
+    setOptimisticScore(newScore);
+    // Give immediate feedback by setting loading to true
+    // Wait, setting `isLoading(true)` disables the button visually immediately, which is fine,
+    // but we want the UI to feel instant, not disabled. Actually we shouldn't disable it during optimistic.
+    // Let's keep `isLoading = false` for optimistic feel, or only disable the opposite button.
+    setIsLoading(true);
+
+    try {
       // If voted opposite type, remove old vote first
       if (voteId) {
         await pb.collection('votes').delete(voteId);
         // Atomically adjust score for removed vote
-        const oldAdjust = voteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
+        const oldAdjust = previousVoteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
         await pb.collection('suggestions').update(suggestionId, oldAdjust);
       }
 
@@ -144,39 +173,55 @@ export function useVote(suggestionId: string): UseVoteReturn {
       const newAdjust = type === 'upvote' ? { 'votes_count+': 1 } : { 'votes_count-': 1 };
       await pb.collection('suggestions').update(suggestionId, newAdjust);
 
-      setVoteType(type);
       setVoteId(newVote.id);
       setLastVoteTime();
       setCooldownActive(true);
       setTimeout(() => setCooldownActive(false), VOTE_COOLDOWN_MS);
       startRevocationTimer();
     } catch (err: any) {
+      // Revert on failure
+      setVoteType(previousVoteType);
+      setOptimisticScore(previousScore);
       logger.error('Vote failed:', err);
       toast.error('Ошибка при голосовании');
     } finally {
       setIsLoading(false);
     }
-  }, [user, isLoading, cooldownActive, voteType, voteId, suggestionId, startRevocationTimer]);
+  }, [user, isLoading, cooldownActive, voteType, voteId, suggestionId, optimisticScore, startRevocationTimer]);
 
   const revokeVote = useCallback(async () => {
     if (!isRevocable || !voteId || isLoading) return;
 
+    const previousVoteType = voteType;
+    const previousScore = optimisticScore;
+
+    let newScore = optimisticScore;
+    if (voteType) {
+      newScore += voteType === 'upvote' ? -1 : 1;
+    }
+
+    // Optimistic UI update
+    setVoteType(null);
+    setOptimisticScore(newScore);
+    clearTimers();
     setIsLoading(true);
+
     try {
       await pb.collection('votes').delete(voteId);
       // Atomically adjust score for revoked vote
-      const revokeAdjust = voteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
+      const revokeAdjust = previousVoteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
       await pb.collection('suggestions').update(suggestionId, revokeAdjust);
-      setVoteType(null);
       setVoteId(null);
-      clearTimers();
     } catch (err: any) {
+      // Revert on failure
+      setVoteType(previousVoteType);
+      setOptimisticScore(previousScore);
       logger.error('Revoke failed:', err);
       toast.error('Ошибка при отмене голоса');
     } finally {
       setIsLoading(false);
     }
-  }, [isRevocable, voteId, isLoading, suggestionId, voteType, clearTimers]);
+  }, [isRevocable, voteId, isLoading, suggestionId, voteType, optimisticScore, clearTimers]);
 
   return {
     voteType,
@@ -184,6 +229,7 @@ export function useVote(suggestionId: string): UseVoteReturn {
     remainingSeconds,
     isLoading,
     cooldownActive,
+    optimisticScore,
     vote,
     revokeVote,
   };

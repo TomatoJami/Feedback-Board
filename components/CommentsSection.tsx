@@ -1,34 +1,60 @@
+'use client';
+
 import React, { useState } from 'react';
 import CommentItem from '@/components/CommentItem';
+import MarkdownEditor from '@/components/MarkdownEditor'; // Assuming MarkdownEditor is in '@/components' based on other imports
+import { useComments } from '@/hooks/useComments';
+import { toast } from 'react-hot-toast';
 
 import type { SuggestionComment } from '@/types';
+
 interface CommentsSectionProps {
-  comments: SuggestionComment[];
-  isLoading: boolean;
+  suggestionId: string;
   user: any;
-  userVotes: Record<string, 'upvote' | 'downvote' | null>;
-  commentText: string;
-  setCommentText: (val: string) => void;
-  sending: boolean;
-  onComment: (e: React.FormEvent<HTMLFormElement>) => Promise<void> | void;
-  onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
-  onReply: (userId: string, text: string, parentId: string) => Promise<any>;
-  authorId: string;
+  isAdmin?: boolean;
+  workspaceRole?: 'admin' | 'moderator' | 'user' | null;
+  workspaceId?: string;
+  suggestionAuthorId?: string;
 }
 
-export default function CommentsSection({
-  comments,
-  isLoading,
-  user,
-  userVotes,
-  commentText,
-  setCommentText,
-  sending,
-  onComment,
-  onVote,
-  onReply,
-  authorId,
+export default function CommentsSection({ 
+  suggestionId, 
+  user, 
+  isAdmin = false,
+  workspaceRole = null,
+  workspaceId,
+  suggestionAuthorId
 }: CommentsSectionProps) {
+  const { 
+    comments, 
+    isLoading, 
+    userVotes,
+    memberPrefixes,
+    addComment, 
+    voteComment,
+    updateComment,
+    deleteComment
+  } = useComments(suggestionId, workspaceId);
+
+  const [commentText, setCommentText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleComment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user || !commentText.trim()) return;
+
+    setSending(true);
+    try {
+      await addComment(user.id, commentText);
+      setCommentText('');
+      toast.success('Комментарий добавлен');
+    } catch (err) {
+      toast.error('Ошибка при отправке');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="comments-section">
       <h2 className="comments-title">
@@ -36,22 +62,26 @@ export default function CommentsSection({
       </h2>
 
       {user && (
-        <form className="comment-form" onSubmit={onComment} style={{ marginBottom: '24px' }}>
-          <input
-            className="comment-input"
-            placeholder="Написать комментарий..."
+        <div className="comment-form" style={{ marginBottom: '24px' }}>
+          <MarkdownEditor 
             value={commentText}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCommentText(e.target.value)}
-            required
+            onChange={setCommentText}
+            minHeight="100px"
+            resizable={false}
+            placeholder="Написать комментарий... Поддерживается Markdown."
           />
-          <button
-            type="submit"
-            className="comment-send"
-            disabled={sending || !commentText.trim()}
-          >
-            {sending ? '...' : 'Отправить'}
-          </button>
-        </form>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={(e) => handleComment(e as any)}
+              disabled={sending || !commentText.trim()}
+              style={{ fontSize: '0.85rem', padding: '8px 24px' }}
+            >
+              {sending ? '...' : 'Отправить'}
+            </button>
+          </div>
+        </div>
       )}
 
       {isLoading ? (
@@ -67,11 +97,17 @@ export default function CommentsSection({
                 key={comment.id} 
                 comment={comment} 
                 allComments={comments}
-                authorId={authorId}
                 user={user}
                 userVotes={userVotes}
-                onVote={onVote}
-                onReply={onReply}
+                onVote={voteComment}
+                onReply={addComment}
+                onUpdate={updateComment}
+                onDelete={deleteComment}
+                workspaceRole={workspaceRole}
+                isAdmin={isAdmin}
+                workspaceId={workspaceId}
+                authorPrefixes={memberPrefixes[comment.user]}
+                isSuggestionAuthor={comment.user === suggestionAuthorId}
               />
             ))}
         </div>

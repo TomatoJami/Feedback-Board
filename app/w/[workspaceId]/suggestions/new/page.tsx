@@ -3,16 +3,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import pb from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { Settings } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
+import MarkdownEditor from '@/components/MarkdownEditor';
 
 export default function NewSuggestionPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const params = useParams();
+  const workspaceId = params.workspaceId as string;
+  const { categories, isLoading: categoriesLoading } = useCategories(workspaceId);
   const router = useRouter();
   
   const [title, setTitle] = useState('');
@@ -26,6 +29,27 @@ export default function NewSuggestionPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem(`fb_draft_suggestion_${workspaceId}`);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.title) setTitle(parsed.title);
+        if (parsed.description) setDescription(parsed.description);
+      } catch (e) {}
+    }
+  }, [workspaceId]);
+
+  // Save draft on change
+  useEffect(() => {
+    if (title || description) {
+      localStorage.setItem(`fb_draft_suggestion_${workspaceId}`, JSON.stringify({ title, description }));
+    } else {
+      localStorage.removeItem(`fb_draft_suggestion_${workspaceId}`);
+    }
+  }, [title, description, workspaceId]);
+
   // Fetch categories and settings when loaded
   useEffect(() => {
     if (categories.length > 0 && !categoryId) {
@@ -35,10 +59,23 @@ export default function NewSuggestionPage() {
     const fetchSettings = async () => {
       try {
         const records = await pb.collection('settings').getFullList<Settings>({ 
+          filter: `workspace_id = "${workspaceId}" || workspace_id.slug = "${workspaceId}"`,
           limit: 1,
           requestKey: null
         });
-        if (records.length > 0) setSettings(records[0]);
+        if (records.length > 0) {
+          setSettings(records[0]);
+        } else {
+          // Fallback: try to find the "Open" status for this workspace
+          const openStatus = await pb.collection('statuses').getFirstListItem(
+            `(workspace_id = "${workspaceId}" || workspace_id.slug = "${workspaceId}") && name = "Open"`,
+            { requestKey: null }
+          ).catch(() => null);
+          
+          if (openStatus) {
+            setSettings({ default_status: openStatus.id } as Settings);
+          }
+        }
       } catch (err) {
         logger.error('Failed to fetch settings:', err);
       }
@@ -67,22 +104,27 @@ export default function NewSuggestionPage() {
     setIsSubmitting(true);
     
     try {
+      // Resolve slug to real workspace ID for relation fields
+      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
+      const realWorkspaceId = workspaceRecord.id;
+
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
       formData.append('category_id', categoryId);
       formData.append('author', user.id);
-      formData.append('status', '');
       formData.append('status_id', settings?.default_status || '');
       formData.append('votes_count', '0');
       formData.append('is_public', 'true');
+      formData.append('workspace_id', realWorkspaceId);
       if (image) {
         formData.append('image', image);
       }
 
       await pb.collection('suggestions').create(formData);
+      localStorage.removeItem(`fb_draft_suggestion_${workspaceId}`);
       toast.success('Предложение успешно опубликовано!');
-      router.push('/');
+      router.push(`/w/${workspaceId}`);
     } catch (err: any) {
       logger.error('Failed to create suggestion:', err);
       toast.error('Ошибка при создании предложения');
@@ -100,11 +142,13 @@ export default function NewSuggestionPage() {
     }
   };
 
-  if (authLoading || categoriesLoading) return null;
-  if (!user) {
-    router.push('/auth/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || categoriesLoading || !user) return null;
 
   return (
     <div className="w-full flex justify-center py-6 sm:py-12">
@@ -172,19 +216,11 @@ export default function NewSuggestionPage() {
 
         <div className="flex flex-col gap-2">
           <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание (опционально)</label>
-          <textarea
+          <MarkdownEditor 
             value={description}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-            className="w-full transition-all outline-none resize-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
-            style={{
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px 16px',
-              color: 'var(--text-primary)',
-              minHeight: '160px'
-            }}
-            placeholder="Расскажите подробнее..."
+            onChange={setDescription}
+            placeholder="Опишите вашу идею подробнее. Поддерживается Markdown (списки, жирный текст, ссылки)..."
+            minHeight="250px"
           />
         </div>
 

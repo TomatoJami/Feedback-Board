@@ -173,10 +173,10 @@
   },
   {
     "id": "_pb_users_auth_",
-    "listRule": "",
-    "viewRule": "",
+    "listRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "viewRule": "@request.auth.id = '' || @request.auth.status != 'blocked'",
     "createRule": "",
-    "updateRule": "id = @request.auth.id || @request.auth.role = 'admin'",
+    "updateRule": "id = @request.auth.id || @request.auth.role = 'admin' || (@collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator'))",
     "deleteRule": "id = @request.auth.id || @request.auth.role = 'admin'",
     "name": "users",
     "type": "auth",
@@ -320,17 +320,85 @@
         "type": "autodate"
       },
       {
-        "cascadeDelete": false,
-        "collectionId": "user_prefixes_pb",
         "hidden": false,
-        "id": "user_pref_rel_0",
-        "maxSelect": 10,
-        "minSelect": 0,
-        "name": "prefixes",
+        "id": "usr_plan_1773954589911",
+        "maxSelect": 1,
+        "name": "plan",
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "relation"
+        "type": "select",
+        "values": [
+          "free",
+          "pro"
+        ]
+      },
+      {
+        "hidden": false,
+        "id": "usr_status_id_177",
+        "maxSelect": 1,
+        "name": "status",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "active",
+          "blocked"
+        ]
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_cust_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_customer_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_sub_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_subscription_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "strp_price_id",
+        "max": 255,
+        "min": 0,
+        "name": "stripe_price_id",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "strp_period_end",
+        "max": "",
+        "min": "",
+        "name": "stripe_current_period_end",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
       }
     ],
     "indexes": [
@@ -804,9 +872,9 @@
     "id": "categories_coll_id",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "categories",
     "type": "base",
     "fields": [
@@ -871,10 +939,23 @@
         "presentable": false,
         "system": true,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_1773954589911501",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_unique_cat_name` ON `categories` (`name`)"
+      "CREATE UNIQUE INDEX `idx_unique_cat_name_ws` ON `categories` (`name`, `workspace_id`)"
     ],
     "system": false
   },
@@ -970,11 +1051,11 @@
   },
   {
     "id": "comments_coll_id",
-    "listRule": "id != ''",
-    "viewRule": "id != ''",
-    "createRule": "@request.auth.id != '' && user = @request.auth.id",
-    "updateRule": "user = @request.auth.id || @request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'admin')",
+    "listRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.status != 'blocked'",
+    "updateRule": "(user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "comments",
     "type": "base",
     "fields": [
@@ -1088,6 +1169,19 @@
         "presentable": false,
         "system": true,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_1773954589911502",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       }
     ],
     "indexes": [
@@ -1184,9 +1278,9 @@
     "id": "pbc_settings_100",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": null,
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "settings",
     "type": "base",
     "fields": [
@@ -1249,18 +1343,33 @@
         "presentable": false,
         "system": false,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_1773954589911886",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_unique_settings_ws` ON `settings` (`workspace_id`)"
+    ],
     "system": false
   },
   {
     "id": "statuses_coll_id",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "statuses",
     "type": "base",
     "fields": [
@@ -1325,20 +1434,33 @@
         "presentable": false,
         "system": true,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_177395458991188",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_unique_stat_name` ON `statuses` (`name`)"
+      "CREATE UNIQUE INDEX `idx_unique_stat_name_ws` ON `statuses` (`name`, `workspace_id`)"
     ],
     "system": false
   },
   {
     "id": "sgstns_coll_id",
-    "listRule": "is_public = true || @request.auth.id != ''",
-    "viewRule": "is_public = true || @request.auth.id != ''",
-    "createRule": "@request.auth.id != ''",
-    "updateRule": "author = @request.auth.id || @request.auth.role = 'admin'",
-    "deleteRule": "(@request.auth.role = 'admin') || (author = @request.auth.id && status = 'Open')",
+    "listRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "updateRule": "(author = @request.auth.id || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(author = @request.auth.id && (status_id.name = 'Open' || status_id = '') || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "suggestions",
     "type": "base",
     "fields": [
@@ -1393,22 +1515,6 @@
         "required": false,
         "system": false,
         "type": "relation"
-      },
-      {
-        "hidden": false,
-        "id": "sgst_status_004",
-        "maxSelect": 1,
-        "name": "status",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "select",
-        "values": [
-          "Open",
-          "Planned",
-          "In_Progress",
-          "Completed"
-        ]
       },
       {
         "hidden": false,
@@ -1495,6 +1601,19 @@
         "presentable": false,
         "system": true,
         "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_1773954589911440",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       }
     ],
     "indexes": [],
@@ -1504,9 +1623,9 @@
     "id": "user_prefixes_pb",
     "listRule": "",
     "viewRule": "",
-    "createRule": "@request.auth.role = 'admin'",
-    "updateRule": "@request.auth.role = 'admin'",
-    "deleteRule": "@request.auth.role = 'admin'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
+    "deleteRule": "workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && @collection.workspace_members.role = 'admin') || @request.auth.role = 'admin'",
     "name": "user_prefixes",
     "type": "base",
     "fields": [
@@ -1553,6 +1672,19 @@
         "type": "text"
       },
       {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_ws_up_001",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
         "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
@@ -1578,11 +1710,11 @@
   },
   {
     "id": "votes_coll_id",
-    "listRule": "@request.auth.id != ''",
-    "viewRule": "@request.auth.id != ''",
-    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != suggestion.author",
+    "listRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "viewRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.id != suggestion.author && @request.auth.status != 'blocked'",
     "updateRule": null,
-    "deleteRule": "@request.auth.id != '' && user = @request.auth.id",
+    "deleteRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.status != 'blocked'",
     "name": "votes",
     "type": "base",
     "fields": [
@@ -1663,6 +1795,210 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX `idx_unique_vote` ON `votes` (`user`, `suggestion`)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_536962552",
+    "listRule": "@request.auth.id != '' && (workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin')",
+    "viewRule": "(workspace.owner = @request.auth.id || workspace.workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "createRule": "@request.auth.id != '' && (workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "updateRule": "(workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(workspace.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "name": "workspace_members",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "pbc_7982372053",
+        "hidden": false,
+        "id": "rel_wsm_ws",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "workspace",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "rel_wsm_usr",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "user",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "sel_wsm_role",
+        "maxSelect": 1,
+        "name": "role",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "admin",
+          "moderator",
+          "user"
+        ]
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "user_prefixes_pb",
+        "hidden": false,
+        "id": "wm_pref_rel_0",
+        "maxSelect": 10,
+        "minSelect": 0,
+        "name": "prefixes",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_wsm_ws_usr` ON `workspace_members` (`workspace`, `user`)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_7982372053",
+    "listRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "viewRule": "(owner = @request.auth.id || workspace_members_via_workspace.user ?= @request.auth.id || @request.auth.role = 'admin' || isPrivate = false) && (@request.auth.id = '' || @request.auth.status != 'blocked')",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "updateRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "deleteRule": "(owner = @request.auth.id || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "name": "workspaces",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_ws_name",
+        "max": 50,
+        "min": 1,
+        "name": "name",
+        "pattern": "",
+        "presentable": true,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_ws_slug",
+        "max": 50,
+        "min": 1,
+        "name": "slug",
+        "pattern": "^[a-z0-9-]+$",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool_ws_private",
+        "name": "isPrivate",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "rel_ws_owner",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_ws_slug` ON `workspaces` (`slug`)"
     ],
     "system": false
   }

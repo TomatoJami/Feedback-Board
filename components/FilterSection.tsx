@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Category, Status, SuggestionStatus } from '@/types';
+import type { Category, Status } from '@/types';
 
 interface FilterSectionProps {
   categoryId: string;
@@ -9,7 +9,8 @@ interface FilterSectionProps {
   categories: Category[];
   statuses: Status[];
   user: any;
-  statusColors: Record<string, string>;
+  sortBy: 'votes' | 'newest' | 'oldest';
+  setSortBy: (sort: 'votes' | 'newest' | 'oldest') => void;
 }
 
 export default function FilterSection({
@@ -20,7 +21,8 @@ export default function FilterSection({
   categories,
   statuses,
   user,
-  statusColors
+  sortBy,
+  setSortBy
 }: FilterSectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -69,20 +71,6 @@ export default function FilterSection({
           Без статуса
         </button>
         
-        {/* Standard Statuses */}
-        {(['Open', 'Planned', 'In_Progress', 'Completed'] as SuggestionStatus[])
-          .filter(std => !statuses.some(ds => ds.name === std.replace('_', ' ')))
-          .map((s) => (
-          <button
-            key={s}
-            className={`filter-chip ${status === s ? 'active' : ''}`}
-            onClick={() => setStatus(s)}
-          >
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: statusColors[s] || '#6b7280', marginRight: '6px', flexShrink: 0 }} />
-            {s.replace('_', ' ')}
-          </button>
-        ))}
-        
         {/* Dynamic Statuses */}
         {statuses.map((s) => (
           <button
@@ -94,6 +82,31 @@ export default function FilterSection({
             {s.name}
           </button>
         ))}
+      </div>
+
+      {/* Sort Options */}
+      <div className="filters-bar" style={{ marginTop: '8px' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '8px', display: 'flex', alignItems: 'center' }}>
+          Сортировка:
+        </span>
+        <button
+          className={`filter-chip ${sortBy === 'votes' ? 'active' : ''}`}
+          onClick={() => setSortBy('votes')}
+        >
+          🔥 Популярные
+        </button>
+        <button
+          className={`filter-chip ${sortBy === 'newest' ? 'active' : ''}`}
+          onClick={() => setSortBy('newest')}
+        >
+          ✨ Новые
+        </button>
+        <button
+          className={`filter-chip ${sortBy === 'oldest' ? 'active' : ''}`}
+          onClick={() => setSortBy('oldest')}
+        >
+          ⏳ Старые
+        </button>
       </div>
     </div>
   );

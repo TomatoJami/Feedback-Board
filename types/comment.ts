@@ -11,7 +11,9 @@ export interface SuggestionComment extends RecordModel {
   downvotes?: number;
   expand?: {
     user?: User;
+    workspace_id?: any;
   };
+  workspace_id?: string;
 }
 
 export interface CommentVote extends RecordModel {

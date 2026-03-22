@@ -13,6 +13,8 @@ interface PrefixManagementProps {
   onDeletePrefix: (id: string) => Promise<void>;
   prefixColorPickerRef: React.RefObject<HTMLDivElement | null>;
   statusColors: string[];
+  isReadOnly?: boolean;
+  isPro?: boolean;
 }
 
 export default function PrefixManagement({
@@ -28,6 +30,8 @@ export default function PrefixManagement({
   onDeletePrefix,
   prefixColorPickerRef,
   statusColors,
+  isReadOnly = false,
+  isPro = false,
 }: PrefixManagementProps) {
   return (
     <section style={{ marginBottom: '48px' }}>
@@ -39,91 +43,99 @@ export default function PrefixManagement({
         padding: '24px',
         marginBottom: '20px'
       }}>
-        <form onSubmit={onAddPrefix} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-          <input
-            type="text"
-            placeholder="Название (напр. HELPER)"
-            value={newPrefixName}
-            onChange={(e) => setNewPrefixName(e.target.value)}
-            required
-            style={{
-              flex: 2,
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 16px',
-              color: 'white',
-              outline: 'none'
-            }}
-          />
-          <div style={{ position: 'relative', display: 'flex' }} ref={prefixColorPickerRef}>
-            <button
-              type="button"
-              data-tooltip="Выбрать цвет префикса"
-              onClick={() => setShowPrefixColorPicker(!showPrefixColorPicker)}
+        {!isReadOnly && isPro && (
+          <form onSubmit={onAddPrefix} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+            <input
+              type="text"
+              placeholder="Название (напр. HELPER)"
+              value={newPrefixName}
+              onChange={(e) => setNewPrefixName(e.target.value)}
+              required
               style={{
-                width: '48px',
-                height: '48px',
+                flex: 2,
                 background: 'var(--bg-tertiary)',
-                border: `2px solid ${newPrefixColor}`,
-                borderRadius: 'var(--radius-md)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: 0,
-                transition: 'transform 0.2s ease'
-              }}
-            >
-              <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: newPrefixColor }} />
-            </button>
-
-            {showPrefixColorPicker && (
-              <div style={{ 
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '8px',
-                zIndex: 50,
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(5, 1fr)', 
-                gap: '8px',
-                padding: '12px',
-                background: 'var(--bg-secondary)',
-                borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-color)',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)',
-                width: '180px',
-              }}>
-                {statusColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => { setNewPrefixColor(color); setShowPrefixColorPicker(false); }}
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: color,
-                      border: newPrefixColor === color ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
-                      cursor: 'pointer',
-                      padding: 0,
-                      transition: 'transform 0.1s ease'
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 16px',
+                color: 'white',
+                outline: 'none'
+              }}
+            />
+            <div style={{ position: 'relative', display: 'flex' }} ref={prefixColorPickerRef}>
+              <button
+                type="button"
+                data-tooltip="Выбрать цвет префикса"
+                onClick={() => setShowPrefixColorPicker(!showPrefixColorPicker)}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  background: 'var(--bg-tertiary)',
+                  border: `2px solid ${newPrefixColor}`,
+                  borderRadius: 'var(--radius-md)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'transform 0.2s ease'
+                }}
+              >
+                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: newPrefixColor }} />
+              </button>
+
+              {showPrefixColorPicker && (
+                <div style={{ 
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  zIndex: 50,
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(5, 1fr)', 
+                  gap: '8px',
+                  padding: '12px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)',
+                  width: '180px',
+                }}>
+                  {statusColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => { setNewPrefixColor(color); setShowPrefixColorPicker(false); }}
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: color,
+                        border: newPrefixColor === color ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'transform 0.1s ease'
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={isAddingPrefix || !newPrefixName.trim()}
+              className="btn btn-primary"
+              style={{ padding: '0 24px' }}
+            >
+              {isAddingPrefix ? '...' : 'Добавить'}
+            </button>
+          </form>
+        )}
+        {!isReadOnly && !isPro && (
+          <div className="flex flex-col items-center justify-center p-6 border border-dashed border-white/10 rounded-xl bg-white/[0.02] mb-6">
+            <div className="text-zinc-500 text-sm mb-3">Кастомные префиксы доступны только в плане PRO</div>
+            <a href="/#pricing" className="btn btn-sm btn-primary">Улучшить тариф</a>
           </div>
-          <button
-            type="submit"
-            disabled={isAddingPrefix || !newPrefixName.trim()}
-            className="btn btn-primary"
-            style={{ padding: '0 24px' }}
-          >
-            {isAddingPrefix ? '...' : 'Добавить'}
-          </button>
-        </form>
+        )}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
           {prefixes.map((p) => (
@@ -151,22 +163,24 @@ export default function PrefixManagement({
               }}>
                 {p.name}
               </span>
-              <button
-                onClick={() => onDeletePrefix(p.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#f43f5e',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  lineHeight: 1,
-                  marginLeft: '4px',
-                  padding: '0 4px'
-                }}
-                title="Удалить"
-              >
-                ×
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => onDeletePrefix(p.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#f43f5e',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                    lineHeight: 1,
+                    marginLeft: '4px',
+                    padding: '0 4px'
+                  }}
+                  title="Удалить"
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
