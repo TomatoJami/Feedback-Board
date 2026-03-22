@@ -49,10 +49,14 @@ export async function POST(req: Request) {
         if (session.mode === 'subscription' && session.client_reference_id) {
           try {
             const subscriptionId = session.subscription as string;
+            console.log('Retrieving subscription details:', subscriptionId);
             const customerId = session.customer as string;
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             
-            const ts = (subscription as any).current_period_end;
+            // FULL DEBUG DUMP
+            console.log('FULL SUBSCRIPTION DUMP:', JSON.stringify(subscription, null, 2));
+            
+            const ts = (subscription as any).current_period_end || (subscription as any).current_period_start;
             const priceId = (subscription as any).items?.data[0]?.price?.id;
 
             // Format date for PB: YYYY-MM-DD HH:MM:SS
@@ -60,6 +64,7 @@ export async function POST(req: Request) {
               ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0]
               : null;
 
+            console.log(`Debug details - ts: ${ts}, endDate: ${endDate}`);
             console.log(`Success! Updating user ${session.client_reference_id} with date ${endDate}`);
 
             await pb.collection('users').update(session.client_reference_id, {
