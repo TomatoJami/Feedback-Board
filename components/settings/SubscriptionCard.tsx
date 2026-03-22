@@ -30,15 +30,23 @@ export default function SubscriptionCard({ user }: SubscriptionCardProps) {
   }, [searchParams, router]);
 
   const handleManage = async () => {
+    console.log('--- SubscriptionCard handleManage ---');
+    console.log('Current plan:', user?.plan);
+
     if (user.plan !== 'pro') {
-      router.push('/#pricing');
+      console.log('Not PRO, redirecting to /pricing');
+      router.push('/pricing');
       return;
     }
 
+    console.log('PRO user, calling billing portal API');
     setLoading(true);
     try {
       const res = await fetch('/api/stripe/billing-portal', { method: 'POST' });
+      console.log('API Response status:', res.status);
       if (!res.ok) {
+        const text = await res.text();
+        console.error('Portal API Error:', text);
         toast.error('Профиль Stripe не найден или ошибка сервера');
         setLoading(false);
         return;
