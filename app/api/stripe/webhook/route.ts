@@ -17,7 +17,6 @@ export async function POST(req: Request) {
     }
 
     let event: Stripe.Event;
-
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err: any) {
@@ -27,20 +26,17 @@ export async function POST(req: Request) {
 
     const pb = new PocketBase(POCKETBASE_URL);
     
-    // Authenticate as Admin to update user records safely
+    // Authenticate as Admin
     try {
       if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) {
-         throw new Error('PB_ADMIN_EMAIL or PB_ADMIN_PASSWORD is not set in environment variables.');
+         throw new Error('PB_ADMIN_EMAIL or PB_ADMIN_PASSWORD is not set.');
       }
-      
-      console.log('Attempting PB Admin login...');
       await pb.admins.authWithPassword(
         process.env.PB_ADMIN_EMAIL,
         process.env.PB_ADMIN_PASSWORD
       );
-      console.log('PB Admin login successful.');
     } catch (e: any) {
-      console.error('CRITICAL: Failed to auth PB Admin in webhook:', e.message);
+      console.error('Failed to auth PB Admin in webhook:', e.message);
       return new NextResponse(`Admin Auth Error: ${e.message}`, { status: 500 });
     }
 
@@ -49,96 +45,62 @@ export async function POST(req: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Checkout session completed:', session.id);
-        console.log('Client Reference ID (User ID):', session.client_reference_id);
-
+        
         if (session.mode === 'subscription' && session.client_reference_id) {
           try {
             const subscriptionId = session.subscription as string;
             const customerId = session.customer as string;
-            
-            console.log('Retrieving subscription details:', subscriptionId);
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-            const priceId = subscription.items.data[0].price.id;
+            
+            const ts = (subscription as any).current_period_end;
+            const priceId = (subscription as any).items?.data[0]?.price?.id;
 
             // Format date for PB: YYYY-MM-DD HH:MM:SS
-            const endDate = (subscription as any).current_period_end 
-              ? new Date((subscription as any).current_period_end * 1000).toISOString().replace('T', ' ').split('.')[0]
+            const endDate = ts 
+              ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0]
               : null;
 
-            console.log('Updating PB User with date:', endDate);
+            console.log(`Success! Updating user ${session.client_reference_id} with date ${endDate}`);
 
-            const planType = 'pro'; // Default to pro for now
-
-            console.log(`Updating user ${session.client_reference_id} to ${planType} plan...`);
-            
             await pb.collection('users').update(session.client_reference_id, {
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
               stripe_price_id: priceId,
               stripe_current_period_end: endDate,
-              plan: planType,
+              plan: 'pro',
             });
-            
-            console.log(`SUCCESS: Updated user ${session.client_reference_id} to ${planType} plan.`);
           } catch (updateErr: any) {
             console.error('ERROR updating user record in PB:', updateErr.message);
             throw updateErr;
           }
-        } else {
-          console.warn('Session mode is not subscription or missing client_reference_id');
         }
         break;
       }
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-        console.log('Subscription updated for customer:', customerId);
-
-        try {
-          const record = await pb.collection('users').getFirstListItem(`stripe_customer_id="${customerId}"`);
-          const priceId = subscription.items.data[0].price.id;
-          const planType = 'pro';
-
-          // Format date for PB: YYYY-MM-DD HH:MM:SS
-          const endDate = (subscription as any).current_period_end
-            ? new Date((subscription as any).current_period_end * 1000).toISOString().replace('T', ' ').split('.')[0]
-            : null;
-          
-          console.log('Updating PB User with date:', endDate);
-
-          if (subscription.status === 'active' || subscription.status === 'trialing') {
-            await pb.collection('users').update(record.id, {
-              stripe_subscription_id: subscription.id,
-              stripe_price_id: priceId,
-              stripe_current_period_end: endDate,
-              plan: planType,
-            });
-            console.log(`Updated subscription for user ${record.id}`);
-          } else if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
-            await pb.collection('users').update(record.id, {
-              plan: 'free',
-            });
-            console.log(`Downgraded user ${record.id} to free due to status: ${subscription.status}`);
-          }
-        } catch (e: any) {
-          console.error(`User not found or update failed for customerId: ${customerId}`, e.message);
-        }
-        break;
-      }
+      case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
-        console.log('Subscription deleted for customer:', customerId);
 
         try {
           const record = await pb.collection('users').getFirstListItem(`stripe_customer_id="${customerId}"`);
-          await pb.collection('users').update(record.id, {
-            plan: 'free',
-            stripe_subscription_id: '',
-            stripe_price_id: '',
-          });
-          console.log(`Reset user ${record.id} to free plan.`);
+          
+          if (event.type === 'customer.subscription.deleted' || subscription.status === 'canceled' || subscription.status === 'unpaid') {
+            await pb.collection('users').update(record.id, {
+              plan: 'free',
+              stripe_subscription_id: '',
+              stripe_price_id: '',
+            });
+          } else {
+            const ts = (subscription as any).current_period_end;
+            const endDate = ts ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0] : null;
+
+            await pb.collection('users').update(record.id, {
+              stripe_subscription_id: subscription.id,
+              stripe_price_id: subscription.items.data[0].price.id,
+              stripe_current_period_end: endDate,
+              plan: 'pro',
+            });
+          }
         } catch (e: any) {
           console.error(`User not found or update failed for customerId: ${customerId}`, e.message);
         }
