@@ -133,8 +133,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithOAuth = useCallback(async () => {
     try {
-      await pb.collection('users').authWithOAuth2({ 
-        provider: 'oidc',
+      const methods = await pb.collection('users').listAuthMethods();
+      console.log('Available auth methods in PB:', JSON.stringify(methods, null, 2));
+
+      console.log('Starting OAuth2 flow with provider: google');
+      const response = await pb.collection('users').authWithOAuth2({ 
+        provider: 'google',
         requestKey: null,
         createData: {
           role: 'user',
@@ -143,8 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailVisibility: true,
         }
       });
+      console.log('OAuth2 response received:', response);
       syncCookie();
-    } catch (err) {
+    } catch (err: any) {
+      console.error('OAuth2 FULL ERROR details:', JSON.stringify(err, null, 2));
       logger.error('OAuth2 login failed:', err);
       throw err;
     }
