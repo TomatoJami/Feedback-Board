@@ -53,10 +53,10 @@ export async function POST(req: Request) {
             const customerId = session.customer as string;
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             
-            // FULL DEBUG DUMP
-            console.log('FULL SUBSCRIPTION DUMP:', JSON.stringify(subscription, null, 2));
+            // Access the timestamp from either the top level or nested items
+            const ts = (subscription as any).items?.data[0]?.current_period_end 
+              || (subscription as any).current_period_end;
             
-            const ts = (subscription as any).current_period_end || (subscription as any).current_period_start;
             const priceId = (subscription as any).items?.data[0]?.price?.id;
 
             // Format date for PB: YYYY-MM-DD HH:MM:SS
@@ -64,7 +64,6 @@ export async function POST(req: Request) {
               ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0]
               : null;
 
-            console.log(`Debug details - ts: ${ts}, endDate: ${endDate}`);
             console.log(`Success! Updating user ${session.client_reference_id} with date ${endDate}`);
 
             await pb.collection('users').update(session.client_reference_id, {
@@ -96,12 +95,13 @@ export async function POST(req: Request) {
               stripe_price_id: '',
             });
           } else {
-            const ts = (subscription as any).current_period_end;
+            const ts = (subscription as any).current_period_end 
+              || (subscription as any).items?.data[0]?.current_period_end;
             const endDate = ts ? new Date(ts * 1000).toISOString().replace('T', ' ').split('.')[0] : null;
 
             await pb.collection('users').update(record.id, {
               stripe_subscription_id: subscription.id,
-              stripe_price_id: subscription.items.data[0].price.id,
+              stripe_price_id: (subscription as any).items.data[0].price.id,
               stripe_current_period_end: endDate,
               plan: 'pro',
             });
