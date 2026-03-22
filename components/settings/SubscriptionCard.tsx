@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuthContext } from '@/lib/auth-context';
+import pb from '@/lib/pocketbase';
+import { toast } from 'react-hot-toast';
 
 interface SubscriptionCardProps {
     user: any;
@@ -10,6 +12,7 @@ interface SubscriptionCardProps {
 
 export default function SubscriptionCard({ user }: SubscriptionCardProps) {
   const router = useRouter();
+  const { user: authUser } = useAuthContext();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
@@ -30,23 +33,19 @@ export default function SubscriptionCard({ user }: SubscriptionCardProps) {
   }, [searchParams, router]);
 
   const handleManage = async () => {
-    console.log('--- SubscriptionCard handleManage ---');
-    console.log('Current plan:', user?.plan);
-
     if (user.plan !== 'pro') {
-      console.log('Not PRO, redirecting to /pricing');
       router.push('/pricing');
       return;
     }
 
-    console.log('PRO user, calling billing portal API');
-    setLoading(true);
     try {
-      const res = await fetch('/api/stripe/billing-portal', { method: 'POST' });
-      console.log('API Response status:', res.status);
+      const res = await fetch('/api/stripe/billing-portal', { 
+        method: 'POST',
+        headers: {
+          'Authorization': pb.authStore.token,
+        }
+      });
       if (!res.ok) {
-        const text = await res.text();
-        console.error('Portal API Error:', text);
         toast.error('Профиль Stripe не найден или ошибка сервера');
         setLoading(false);
         return;
