@@ -11,6 +11,7 @@ import { useComments } from '@/hooks/useComments';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
 import type { Suggestion, Settings } from '@/types';
+import { getAvatarColor } from '@/lib/utils';
 import SuggestionDetailCard from '@/components/SuggestionDetailCard';
 import CommentsSection from '@/components/CommentsSection';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
@@ -22,19 +23,6 @@ const STATUS_COLORS: Record<string, string> = {
   Completed: '#10b981',
 };
 
-// Deterministic color from string
-function getColor(id: string): string {
-  const colors = [
-    '#6366f1', '#a855f7', '#ec4899', '#f43f5e',
-    '#f97316', '#eab308', '#22c55e', '#14b8a6',
-    '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef',
-  ];
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
 
 export default function SuggestionDetailPage() {
   const router = useRouter();
@@ -46,7 +34,7 @@ export default function SuggestionDetailPage() {
   
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   
-  const { voteType, isRevocable, remainingSeconds, isLoading: voteLoading, vote, revokeVote, optimisticScore } = useVote(id, suggestion?.votes_count ?? 0);
+  const { voteType, isPending, remainingSeconds, isLoading: voteLoading, vote, optimisticScore } = useVote(id, suggestion?.votes_count ?? 0);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [workspaceRole, setWorkspaceRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
@@ -164,7 +152,7 @@ export default function SuggestionDetailPage() {
   const authorName = suggestion.expand?.author?.name || 'Аноним';
   const authorId = suggestion.author;
   const authorRole = suggestion.expand?.author?.role;
-  const authorColor = getColor(authorId);
+  const authorColor = getAvatarColor(authorId || '');
   const score = optimisticScore;
   const scoreClass = score > 0 ? 'positive' : score < 0 ? 'negative' : 'zero';
 
@@ -184,8 +172,8 @@ export default function SuggestionDetailPage() {
   const showDeleteBtn = canDeleteSuggestion;
 
   return (
-    <div className="detail-container w-full !max-w-full">
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+    <div className="detail-container w-full !max-w-full" style={{ paddingTop: '16px' }}>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', marginTop: '16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
         <Link href={`/w/${workspaceId}`} style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>
           {suggestion.expand?.workspace_id?.name || 'Воркспейс'}
         </Link>
@@ -212,12 +200,11 @@ export default function SuggestionDetailPage() {
         score={score}
         scoreClass={scoreClass}
         voteType={voteType}
-        isRevocable={isRevocable}
+        isPending={isPending}
         remainingSeconds={remainingSeconds}
         voteLoading={voteLoading}
         user={user}
         onVote={vote}
-        onRevoke={revokeVote}
         onShowDelete={() => setShowDeleteModal(true)}
         showDeleteBtn={showDeleteBtn}
         authorPrefixes={authorPrefixes}

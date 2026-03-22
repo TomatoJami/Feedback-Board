@@ -31,6 +31,7 @@ function HomeContent() {
   const [categoryId, setCategoryId] = useState<CategoryFilter>('All');
   const [status, setStatus] = useState<StatusFilter>('All');
   const [sortBy, setSortBy] = useState<SortSortSelection>('votes');
+  const [searchQuery, setSearchQuery] = useState('');
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
 
@@ -68,7 +69,11 @@ function HomeContent() {
       const suggestionEffectiveStatus = s.status_id || 'None';
       const statusMatch = status === 'All' || suggestionEffectiveStatus === status;
 
-      return categoryMatch && statusMatch;
+      const searchMatch = !searchQuery ||
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+      return categoryMatch && statusMatch && searchMatch;
     });
 
     // Sorting
@@ -87,7 +92,7 @@ function HomeContent() {
       }
       return 0;
     });
-  }, [suggestions, categoryId, status, user, sortBy]);
+  }, [suggestions, categoryId, status, user, sortBy, searchQuery]);
 
   const isMine = categoryId === 'Mine';
   const isLoading = suggestionsLoading || categoriesLoading || statusesLoading || checkingAccess;
@@ -120,6 +125,8 @@ function HomeContent() {
         categories={categories}
         statuses={statuses}
         user={user}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
 
       <div className="suggestions-list grid gap-6">
@@ -130,8 +137,10 @@ function HomeContent() {
             workspaceSlug={workspaceId}
           />
         ) : (
-          filteredSuggestions.map((suggestion) => (
-            <SuggestionCard key={suggestion.id} suggestion={suggestion} workspaceSlug={workspaceId} />
+          filteredSuggestions.map((suggestion, index) => (
+            <div key={suggestion.id} style={{ animation: `fadeIn 0.3s ease-out ${index * 0.05}s both` }}>
+              <SuggestionCard suggestion={suggestion} workspaceSlug={workspaceId} />
+            </div>
           ))
         )}
       </div>

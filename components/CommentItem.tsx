@@ -8,29 +8,20 @@ import DOMPurify from 'isomorphic-dompurify'; // Keep as backup or for manual us
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
+import type { CommentPendingVote } from '@/hooks/useComments';
 import { toast } from 'react-hot-toast';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getAvatarColor } from '@/lib/utils';
 
 // Deterministic color from string
-function getColor(id: string): string {
-  const colors = [
-    '#6366f1', '#a855f7', '#ec4899', '#f43f5e',
-    '#f97316', '#eab308', '#22c55e', '#14b8a6',
-    '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef',
-  ];
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
 
 interface CommentItemProps {
   comment: SuggestionComment;
   allComments: SuggestionComment[];
   user: any;
   userVotes: Record<string, 'upvote' | 'downvote' | null>;
+  pendingVotes: Record<string, CommentPendingVote>;
   onVote: (id: string, type: 'upvote' | 'downvote') => Promise<void>;
   onReply: (userId: string, text: string, parentId: string) => Promise<any>;
   onUpdate: (id: string, text: string) => Promise<any>;
@@ -47,6 +38,7 @@ export default function CommentItem({
   allComments, 
   user, 
   userVotes, 
+  pendingVotes,
   onVote, 
   onReply, 
   onUpdate,
@@ -88,7 +80,7 @@ export default function CommentItem({
 
   const cUser = comment.expand?.user;
   const cName = cUser?.name || 'Аноним';
-  const cColor = getColor(comment.user);
+  const cColor = getAvatarColor(comment.user || '');
   
   // Roles check for badges
   const isCommentAuthor = user?.id === comment.user;
@@ -101,6 +93,7 @@ export default function CommentItem({
   const replies = allComments.filter(c => c.parent_id === comment.id);
   const currentVote = userVotes[comment.id];
   const score = (comment.upvotes || 0) - (comment.downvotes || 0);
+  const pending = pendingVotes[comment.id];
 
   const handleReplySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -308,6 +301,24 @@ export default function CommentItem({
                 <path d="M12 5v14M5 12l7 7 7-7" />
               </svg>
             </button>
+            {pending && (
+              <div className="vote-timer-ring" style={{ width: '28px', height: '28px' }} title="Вы можете изменить голос">
+                <svg viewBox="0 0 36 36" className="vote-timer-svg">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(99, 102, 241, 0.15)" strokeWidth="3" />
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="url(#timerGradientComment)" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${(pending.remainingSeconds / 15) * 97.4} 97.4`}
+                    style={{ transition: 'stroke-dasharray 1s linear', transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                  />
+                  <defs>
+                    <linearGradient id="timerGradientComment" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <span className="vote-timer-number" style={{ fontSize: '0.55rem' }}>{pending.remainingSeconds}</span>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -384,6 +395,7 @@ export default function CommentItem({
               allComments={allComments}
               user={user}
               userVotes={userVotes}
+              pendingVotes={pendingVotes}
               onVote={onVote}
               onReply={onReply}
               onUpdate={onUpdate}

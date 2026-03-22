@@ -1,17 +1,30 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import pb from '@/lib/pocketbase';
 import { logger } from '@/lib/logger';
 import type { SuggestionComment } from '@/types';
 import type { RecordSubscription } from 'pocketbase';
+
+const CHANGE_WINDOW_MS = 15_000;
+
+export interface CommentPendingVote {
+  commentId: string;
+  type: 'upvote' | 'downvote';
+  remainingSeconds: number;
+}
 
 export function useComments(suggestionId: string, workspaceId?: string) {
   const [comments, setComments] = useState<SuggestionComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userVotes, setUserVotes] = useState<Record<string, 'upvote' | 'downvote' | null>>({});
   const [memberPrefixes, setMemberPrefixes] = useState<Record<string, any[]>>({});
+  const [pendingVotes, setPendingVotes] = useState<Record<string, CommentPendingVote>>({});
 
+  // Track locked votes (loaded from DB on mount, or timer expired)
+  const lockedVotesRef = useRef<Set<string>>(new Set());
+  const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchComments = useCallback(async () => {
     try {
@@ -33,6 +46,8 @@ export function useComments(suggestionId: string, workspaceId?: string) {
         const voteMap: Record<string, 'upvote' | 'downvote'> = {};
         votes.forEach(v => {
           voteMap[v.comment] = v.type as 'upvote' | 'downvote';
+          // Existing votes loaded from DB = locked (page was refreshed/loaded)
+          lockedVotesRef.current.add(v.comment);
         });
         setUserVotes(voteMap);
       }
@@ -60,6 +75,29 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     }
   }, [suggestionId, workspaceId]);
 
+  // Start countdown interval for pending votes
+  useEffect(() => {
+    countdownIntervalRef.current = setInterval(() => {
+      setPendingVotes(prev => {
+        const updated = { ...prev };
+        let changed = false;
+        for (const key of Object.keys(updated)) {
+          if (updated[key].remainingSeconds > 0) {
+            updated[key] = { ...updated[key], remainingSeconds: updated[key].remainingSeconds - 1 };
+            changed = true;
+          }
+        }
+        return changed ? updated : prev;
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      // Clear all pending timers on unmount
+      Object.values(pendingTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
+
   useEffect(() => {
     fetchComments();
 
@@ -68,7 +106,6 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       setComments((prev) => {
         switch (e.action) {
           case 'create':
-            // If we already have it (from manual add), skip
             if (prev.find(c => c.id === e.record.id)) return prev;
             return [...prev, e.record];
           case 'update':
@@ -92,6 +129,82 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     };
   }, [fetchComments, suggestionId]);
 
+  const startPendingTimer = useCallback((commentId: string, type: 'upvote' | 'downvote') => {
+    // Clear existing timer for this comment
+    if (pendingTimersRef.current[commentId]) {
+      clearTimeout(pendingTimersRef.current[commentId]);
+    }
+
+    // Add to pending votes
+    setPendingVotes(prev => ({
+      ...prev,
+      [commentId]: { commentId, type, remainingSeconds: 15 },
+    }));
+
+    // Set timer to lock vote after 15s
+    pendingTimersRef.current[commentId] = setTimeout(() => {
+      lockedVotesRef.current.add(commentId);
+      setPendingVotes(prev => {
+        const updated = { ...prev };
+        delete updated[commentId];
+        return updated;
+      });
+      delete pendingTimersRef.current[commentId];
+    }, CHANGE_WINDOW_MS);
+  }, []);
+
+  const voteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
+    if (!pb.authStore.record) return;
+    const userId = pb.authStore.record.id;
+    const existingType = userVotes[commentId];
+
+    // Already voted same type → do nothing
+    if (existingType === type) return;
+
+    // Vote is locked → do nothing
+    if (lockedVotesRef.current.has(commentId) && existingType) {
+      return;
+    }
+
+    try {
+      if (existingType) {
+        // Change vote (e.g. up -> down)
+        const existing = await pb.collection('comment_votes').getFirstListItem(`user="${userId}" && comment="${commentId}"`);
+        await pb.collection('comment_votes').update(existing.id, { type });
+        
+        // Update counters on comment
+        const oldField = existingType === 'upvote' ? 'upvotes' : 'downvotes';
+        const newField = type === 'upvote' ? 'upvotes' : 'downvotes';
+        await pb.collection('comments').update(commentId, { 
+          [`${oldField}-`]: 1,
+          [`${newField}+`]: 1
+        });
+      } else {
+        // New vote
+        await pb.collection('comment_votes').create({
+          user: userId,
+          comment: commentId,
+          type,
+        });
+        
+        // Update counter on comment
+        const field = type === 'upvote' ? 'upvotes' : 'downvotes';
+        await pb.collection('comments').update(commentId, { [`${field}+`]: 1 });
+      }
+      
+      setUserVotes(prev => ({ ...prev, [commentId]: type }));
+      startPendingTimer(commentId, type);
+
+      // Refresh comment to get updated counts
+      try {
+        const updated = await pb.collection('comments').getOne<SuggestionComment>(commentId, { expand: 'user' });
+        setComments(prev => prev.map(c => c.id === commentId ? updated : c));
+      } catch {}
+    } catch (err) {
+      logger.error('Comment vote failed:', err);
+    }
+  }, [userVotes, startPendingTimer]);
+
   const addComment = useCallback(async (userId: string, text: string, parentId?: string) => {
     const record = await pb.collection('comments').create({
       user: userId,
@@ -109,54 +222,6 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       return record;
     }
   }, [suggestionId]);
-
-  const voteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
-    if (!pb.authStore.record) return;
-    const userId = pb.authStore.record.id;
-    const existingType = userVotes[commentId];
-
-    try {
-      if (existingType === type) {
-        // 1. Revoke vote
-        const existing = await pb.collection('comment_votes').getFirstListItem(`user="${userId}" && comment="${commentId}"`);
-        await pb.collection('comment_votes').delete(existing.id);
-        
-        // Update counter on comment
-        const field = type === 'upvote' ? 'upvotes' : 'downvotes';
-        await pb.collection('comments').update(commentId, { [`${field}-`]: 1 });
-        
-        setUserVotes(prev => ({ ...prev, [commentId]: null }));
-      } else {
-        if (existingType) {
-          // 2. Change vote (e.g. up -> down)
-          const existing = await pb.collection('comment_votes').getFirstListItem(`user="${userId}" && comment="${commentId}"`);
-          await pb.collection('comment_votes').update(existing.id, { type });
-          
-          // Update counters on comment
-          const oldField = existingType === 'upvote' ? 'upvotes' : 'downvotes';
-          const newField = type === 'upvote' ? 'upvotes' : 'downvotes';
-          await pb.collection('comments').update(commentId, { 
-            [`${oldField}-`]: 1,
-            [`${newField}+`]: 1
-          });
-        } else {
-          // 3. New vote
-          await pb.collection('comment_votes').create({
-            user: userId,
-            comment: commentId,
-            type,
-          });
-          
-          // Update counter on comment
-          const field = type === 'upvote' ? 'upvotes' : 'downvotes';
-          await pb.collection('comments').update(commentId, { [`${field}+`]: 1 });
-        }
-        setUserVotes(prev => ({ ...prev, [commentId]: type }));
-      }
-    } catch (err) {
-      // Failed to vote
-    }
-  }, [userVotes]);
 
   const updateComment = useCallback(async (id: string, text: string) => {
     try {
@@ -184,6 +249,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     isLoading, 
     userVotes, 
     memberPrefixes,
+    pendingVotes,
     addComment, 
     voteComment, 
     updateComment,

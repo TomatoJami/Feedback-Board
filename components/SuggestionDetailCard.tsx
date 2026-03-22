@@ -1,9 +1,9 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
 import type { Suggestion } from '@/types';
 import Badge from '@/components/ui/Badge';
+import AuthorBadge from '@/components/suggestions/AuthorBadge';
 
 interface SuggestionDetailCardProps {
   suggestion: Suggestion;
@@ -18,12 +18,11 @@ interface SuggestionDetailCardProps {
   score: number;
   scoreClass: string;
   voteType: 'upvote' | 'downvote' | null;
-  isRevocable: boolean;
+  isPending: boolean;
   remainingSeconds: number;
   voteLoading: boolean;
   user: any;
   onVote: (type: 'upvote' | 'downvote', authorId: string) => void;
-  onRevoke: () => void;
   onShowDelete: () => void;
   showDeleteBtn: boolean;
   authorPrefixes?: any[];
@@ -42,12 +41,11 @@ export default function SuggestionDetailCard({
   score,
   scoreClass,
   voteType,
-  isRevocable,
+  isPending,
   remainingSeconds,
   voteLoading,
   user,
   onVote,
-  onRevoke,
   onShowDelete,
   showDeleteBtn,
   authorPrefixes,
@@ -79,20 +77,11 @@ export default function SuggestionDetailCard({
 
       {/* Author details */}
       <div className="detail-author" style={{ marginBottom: '16px' }}>
-        <div className="detail-author-avatar" style={{ 
-          background: suggestion.expand?.author?.avatar ? 'transparent' : authorColor,
-          overflow: 'hidden',
-          padding: 0
-        }}>
-          {suggestion.expand?.author?.avatar ? (
-            <img 
-              src={`${POCKETBASE_URL}/api/files/users/${suggestion.expand.author.id}/${suggestion.expand.author.avatar}`} 
-              alt={authorName} 
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-            />
-          ) : authorName.charAt(0).toUpperCase()}
-        </div>
-        <span className="detail-author-name">{authorName}</span>
+        <AuthorBadge 
+          authorId={suggestion.author || ''}
+          authorName={authorName}
+          authorAvatar={suggestion.expand?.author?.avatar}
+        />
         {authorPrefixes && authorPrefixes.length > 0 && (
           <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
             {authorPrefixes.map((p) => (
@@ -137,8 +126,8 @@ export default function SuggestionDetailCard({
               a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline" />,
               code: ({node, inline, ...props}: any) => 
                 inline 
-                  ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
-                  : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code {...props} /></pre>,
+                   ? <code className="bg-white/10 px-1 rounded text-indigo-300" {...props} />
+                   : <pre className="bg-black/40 p-4 rounded-xl overflow-x-auto text-[0.85em] mb-4 border border-white/10"><code {...props} /></pre>,
               img: ({node, ...props}) => <img className="rounded-xl max-w-full h-auto border border-white/10 mb-6 shadow-2xl" {...props} />
             }}
           >
@@ -149,6 +138,7 @@ export default function SuggestionDetailCard({
 
       {imageUrl && (
         <div className="detail-image">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imageUrl} alt={suggestion.title} />
         </div>
       )}
@@ -182,14 +172,33 @@ export default function SuggestionDetailCard({
             </svg>
           </button>
 
-          {isRevocable && (
-            <button className="revoke-btn" onClick={onRevoke}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 14l-4-4 4-4" />
-                <path d="M5 10h11a4 4 0 010 8h-1" />
+          {isPending && (
+            <div className="vote-timer-ring" title="Вы можете изменить голос">
+              <svg viewBox="0 0 36 36" className="vote-timer-svg">
+                <circle
+                  cx="18" cy="18" r="15.5"
+                  fill="none"
+                  stroke="rgba(99, 102, 241, 0.15)"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="18" cy="18" r="15.5"
+                  fill="none"
+                  stroke="url(#timerGradientDetail)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(remainingSeconds / 15) * 97.4} 97.4`}
+                  style={{ transition: 'stroke-dasharray 1s linear', transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                />
+                <defs>
+                  <linearGradient id="timerGradientDetail" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="100%" stopColor="#a855f7" />
+                  </linearGradient>
+                </defs>
               </svg>
-              <span className="revoke-timer">{remainingSeconds}с</span>
-            </button>
+              <span className="vote-timer-number">{remainingSeconds}</span>
+            </div>
           )}
         </div>
 

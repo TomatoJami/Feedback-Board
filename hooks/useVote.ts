@@ -7,53 +7,41 @@ import toast from 'react-hot-toast';
 import { useAuth } from './useAuth';
 import type { Vote, VoteType } from '@/types';
 
-const REVOKE_WINDOW_MS = 15_000;
-const VOTE_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-const COOLDOWN_KEY = 'fb_last_vote_time';
-
-function getLastVoteTime(): number {
-  if (typeof window === 'undefined') return 0;
-  return parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10);
-}
-
-function setLastVoteTime() {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
-  }
-}
+const CHANGE_WINDOW_MS = 15_000;
+const VOTE_SPAM_PROTECTION_MS = 500;
 
 interface UseVoteReturn {
   voteType: VoteType | null;
-  isRevocable: boolean;
+  isPending: boolean;
   remainingSeconds: number;
   isLoading: boolean;
-  cooldownActive: boolean;
   optimisticScore: number;
   vote: (type: VoteType, authorId?: string) => Promise<void>;
-  revokeVote: () => Promise<void>;
 }
 
 export function useVote(suggestionId: string, initialScore?: number): UseVoteReturn {
   const { user } = useAuth();
   const [voteType, setVoteType] = useState<VoteType | null>(null);
   const [voteId, setVoteId] = useState<string | null>(null);
-  const [isRevocable, setIsRevocable] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [cooldownActive, setCooldownActive] = useState(false);
   const [optimisticScore, setOptimisticScore] = useState(initialScore ?? 0);
-  
+  const [isLocked, setIsLocked] = useState(false);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastClickRef = useRef<number>(0);
+  const isRequestInFlightRef = useRef(false);
 
-  // Sync initialScore if it changes from external sources (like realtime subscriptions)
+  // Sync initialScore from external
   useEffect(() => {
     if (initialScore !== undefined) {
       setOptimisticScore(initialScore);
     }
   }, [initialScore]);
 
-  // Check existing vote
+  // On mount: check existing vote → it's already committed (page was refreshed)
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -65,6 +53,9 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
         if (result.totalItems > 0) {
           setVoteType(result.items[0].type || 'upvote');
           setVoteId(result.items[0].id);
+          // Vote exists in DB and page was loaded/refreshed → locked
+          setIsLocked(true);
+          setIsPending(false);
         }
       } catch {
         // No vote found
@@ -72,17 +63,7 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
     })();
   }, [user, suggestionId]);
 
-  // Check cooldown
-  useEffect(() => {
-    const diff = Date.now() - getLastVoteTime();
-    if (diff < VOTE_COOLDOWN_MS) {
-      setCooldownActive(true);
-      const timeout = setTimeout(() => setCooldownActive(false), VOTE_COOLDOWN_MS - diff);
-      return () => clearTimeout(timeout);
-    }
-  }, []);
-
-  // Cleanup
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -90,8 +71,12 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
     };
   }, []);
 
-  const startRevocationTimer = useCallback(() => {
-    setIsRevocable(true);
+  const startChangeTimer = useCallback(() => {
+    // Clear existing timers
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    setIsPending(true);
     setRemainingSeconds(15);
 
     intervalRef.current = setInterval(() => {
@@ -105,38 +90,46 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
     }, 1000);
 
     timerRef.current = setTimeout(() => {
-      setIsRevocable(false);
+      // Timer expired → lock vote
+      setIsPending(false);
+      setIsLocked(true);
       setRemainingSeconds(0);
       if (intervalRef.current) clearInterval(intervalRef.current);
-    }, REVOKE_WINDOW_MS);
-  }, []);
-
-  const clearTimers = useCallback(() => {
-    setIsRevocable(false);
-    setRemainingSeconds(0);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    }, CHANGE_WINDOW_MS);
   }, []);
 
   const vote = useCallback(async (type: VoteType, authorId?: string) => {
-    if (!user || isLoading || cooldownActive) return;
+    if (!user || isRequestInFlightRef.current) return;
+
+    // Spam protection
+    const now = Date.now();
+    if (now - lastClickRef.current < VOTE_SPAM_PROTECTION_MS) return;
 
     if (authorId && user.id === authorId) {
-      const toast = (await import('react-hot-toast')).default;
       toast.error('Вы не можете голосовать за свое предложение');
       return;
     }
 
-    // If already voted same type → do nothing
-    if (voteType === type && voteId) {
+    // Already voted same type → do nothing
+    if (voteType === type) {
       return;
     }
 
-    // Capture previous state for fallback
+    // Vote is locked (15s passed or page was refreshed) → do nothing
+    if (isLocked && voteId) {
+      toast('Голос уже зафиксирован', { icon: '🔒' });
+      return;
+    }
+
+    isRequestInFlightRef.current = true;
+    lastClickRef.current = now;
+
+    // Capture previous state for rollback
     const previousVoteType = voteType;
     const previousScore = optimisticScore;
+    const previousVoteId = voteId;
 
-    // Optimistically update UI
+    // Optimistic UI update
     let newScore = optimisticScore;
     if (previousVoteType) {
       // Remove old vote effect
@@ -147,90 +140,49 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
 
     setVoteType(type);
     setOptimisticScore(newScore);
-    // Give immediate feedback by setting loading to true
-    // Wait, setting `isLoading(true)` disables the button visually immediately, which is fine,
-    // but we want the UI to feel instant, not disabled. Actually we shouldn't disable it during optimistic.
-    // Let's keep `isLoading = false` for optimistic feel, or only disable the opposite button.
     setIsLoading(true);
 
     try {
-      // If voted opposite type, remove old vote first
-      if (voteId) {
-        await pb.collection('votes').delete(voteId);
-        // Atomically adjust score for removed vote
-        const oldAdjust = previousVoteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
-        await pb.collection('suggestions').update(suggestionId, oldAdjust);
-      }
-
-      // Create new vote
-      const newVote = await pb.collection('votes').create<Vote>({
-        user: user.id,
-        suggestion: suggestionId,
-        type,
+      const response = await fetch('/api/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pb.authStore.token}`,
+        },
+        body: JSON.stringify({
+          suggestionId,
+          type,
+          action: 'vote',
+        }),
       });
 
-      // Atomically update score
-      const newAdjust = type === 'upvote' ? { 'votes_count+': 1 } : { 'votes_count-': 1 };
-      await pb.collection('suggestions').update(suggestionId, newAdjust);
+      if (!response.ok) {
+        throw new Error('Vote failed on server');
+      }
 
-      setVoteId(newVote.id);
-      setLastVoteTime();
-      setCooldownActive(true);
-      setTimeout(() => setCooldownActive(false), VOTE_COOLDOWN_MS);
-      startRevocationTimer();
+      const result = await response.json();
+      setVoteId(result.id);
+      // Start/restart the 15s change window
+      startChangeTimer();
     } catch (err: any) {
-      // Revert on failure
+      // Rollback
       setVoteType(previousVoteType);
       setOptimisticScore(previousScore);
+      setVoteId(previousVoteId);
       logger.error('Vote failed:', err);
       toast.error('Ошибка при голосовании');
     } finally {
       setIsLoading(false);
+      isRequestInFlightRef.current = false;
     }
-  }, [user, isLoading, cooldownActive, voteType, voteId, suggestionId, optimisticScore, startRevocationTimer]);
-
-  const revokeVote = useCallback(async () => {
-    if (!isRevocable || !voteId || isLoading) return;
-
-    const previousVoteType = voteType;
-    const previousScore = optimisticScore;
-
-    let newScore = optimisticScore;
-    if (voteType) {
-      newScore += voteType === 'upvote' ? -1 : 1;
-    }
-
-    // Optimistic UI update
-    setVoteType(null);
-    setOptimisticScore(newScore);
-    clearTimers();
-    setIsLoading(true);
-
-    try {
-      await pb.collection('votes').delete(voteId);
-      // Atomically adjust score for revoked vote
-      const revokeAdjust = previousVoteType === 'upvote' ? { 'votes_count-': 1 } : { 'votes_count+': 1 };
-      await pb.collection('suggestions').update(suggestionId, revokeAdjust);
-      setVoteId(null);
-    } catch (err: any) {
-      // Revert on failure
-      setVoteType(previousVoteType);
-      setOptimisticScore(previousScore);
-      logger.error('Revoke failed:', err);
-      toast.error('Ошибка при отмене голоса');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isRevocable, voteId, isLoading, suggestionId, voteType, optimisticScore, clearTimers]);
+  }, [user, voteType, voteId, suggestionId, optimisticScore, isLocked, startChangeTimer]);
 
   return {
     voteType,
-    isRevocable,
+    isPending,
     remainingSeconds,
     isLoading,
-    cooldownActive,
     optimisticScore,
     vote,
-    revokeVote,
   };
 }

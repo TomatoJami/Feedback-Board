@@ -234,6 +234,7 @@ export default function LivePreview() {
                      allComments={MOCK_COMMENTS}
                      user={null}
                      userVotes={{}}
+                     pendingVotes={{}}
                      onVote={async () => {}}
                      onReply={async () => {}}
                      onUpdate={async () => {}}

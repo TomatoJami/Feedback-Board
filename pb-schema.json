@@ -1561,7 +1561,7 @@
         "hidden": false,
         "id": "sgst_votes_008",
         "max": null,
-        "min": 0,
+        "min": null,
         "name": "votes_count",
         "onlyInt": false,
         "presentable": false,

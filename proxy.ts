@@ -46,7 +46,7 @@ export async function proxy(request: NextRequest) {
 
       // Securely verify token and get user profile directly from PocketBase
       // We don't verify signature locally, we let PocketBase do it for 100% safety
-      const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+      const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL;
       
       const response = await fetch(`${pbUrl}/api/collections/users/auth-refresh`, {
         method: 'POST',

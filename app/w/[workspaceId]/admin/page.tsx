@@ -18,6 +18,8 @@ import SuggestionManagement from '@/components/admin/SuggestionManagement';
 import WorkspaceMemberManagement from '@/components/admin/WorkspaceMemberManagement';
 import WorkspaceDangerZone from '@/components/admin/WorkspaceDangerZone';
 import ConfirmModal from '@/components/ConfirmModal';
+import StatusChangeModal from '@/components/admin/StatusChangeModal';
+import AccessDenied from '@/components/AccessDenied';
 
 const STATUS_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
@@ -82,6 +84,23 @@ export default function AdminPage() {
     message: '',
     onConfirm: () => {},
     variant: 'danger',
+  });
+
+  // Status change modal state
+  const [statusChangeModal, setStatusChangeModal] = useState<{
+    isOpen: boolean;
+    suggestionId: string;
+    suggestionTitle: string;
+    statusId: string;
+    statusName: string;
+    statusColor: string;
+  }>({
+    isOpen: false,
+    suggestionId: '',
+    suggestionTitle: '',
+    statusId: '',
+    statusName: '',
+    statusColor: '#6366f1',
   });
 
   useEffect(() => {
@@ -197,19 +216,35 @@ export default function AdminPage() {
   }, [user, authLoading, router, fetchData]);
 
   const handleStatusChange = async (id: string, newStatusId: string) => {
-    const message = window.prompt('Введите комментарий для пользователя (необязательно):', '');
-    setUpdatingId(id);
+    const suggestion = suggestions.find((s) => s.id === id);
+    const statusObj = statuses.find(s => s.id === newStatusId);
+    setStatusChangeModal({
+      isOpen: true,
+      suggestionId: id,
+      suggestionTitle: suggestion?.title || '',
+      statusId: newStatusId,
+      statusName: statusObj?.name || 'Без статуса',
+      statusColor: statusObj?.color || '#71717a',
+    });
+  };
+
+  const commitStatusChange = async (comment: string) => {
+    const { suggestionId, statusId } = statusChangeModal;
+    setStatusChangeModal(prev => ({ ...prev, isOpen: false }));
+    setUpdatingId(suggestionId);
     try {
-      const updateData: any = { status_id: newStatusId || null };
-      const statusObj = statuses.find(s => s.id === newStatusId);
-      await pb.collection('suggestions').update(id, updateData, { requestKey: null });
-      setSuggestions((prev) => prev.map((s) => (s.id === id ? { ...s, status_id: updateData.status_id, status: (statusObj?.name || '') as any, expand: { ...s.expand, status_id: statusObj } } : s)));
+      const updateData: any = { status_id: statusId || null };
+      const statusObj = statuses.find(s => s.id === statusId);
+      await pb.collection('suggestions').update(suggestionId, updateData, { requestKey: null });
+      setSuggestions((prev) => prev.map((s) => (s.id === suggestionId ? { ...s, status_id: updateData.status_id, status: (statusObj?.name || '') as any, expand: { ...s.expand, status_id: statusObj } } : s)));
       toast.success('Статус обновлён');
 
-      const suggestion = suggestions.find((s) => s.id === id);
+      const suggestion = suggestions.find((s) => s.id === suggestionId);
       if (suggestion?.author) {
         const statusText = statusObj?.name || 'Без статуса';
-        const notifMessage = message ? `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}. ${message}` : `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}`;
+        const notifMessage = comment
+          ? `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}. ${comment}`
+          : `Статус вашего предложения "${suggestion.title}" изменен на: ${statusText}`;
         await pb.collection('notifications').create({ user: suggestion.author, message: notifMessage, read: false }, { requestKey: null });
       }
     } catch (err) {
@@ -414,38 +449,49 @@ export default function AdminPage() {
     );
   }
 
-  if (!user || !isWorkspaceAdmin) return null;
+  if (!user || !isWorkspaceAdmin) return (
+    <AccessDenied 
+      title="Доступ запрещён"
+      message="У вас нет прав администратора для управления этим пространством."
+      showLogin={!user}
+      showHome={true}
+    />
+  );
 
   return (
     <div style={{ paddingBottom: '60px', position: 'relative' }}>
-      <button
-        onClick={() => router.back()}
-        className="fixed left-4 md:left-8 w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center cursor-pointer transition-all"
-        style={{ 
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-color)',
-          color: 'var(--text-secondary)',
-          zIndex: 40,
-          boxShadow: 'var(--shadow-md)'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'var(--text-primary)';
-          e.currentTarget.style.background = 'var(--bg-tertiary)';
-          e.currentTarget.style.transform = 'translate(-2px, -50%) scale(1.05)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-          e.currentTarget.style.background = 'var(--bg-secondary)';
-          e.currentTarget.style.transform = 'translateY(-50%)';
-        }}
-        title="Вернуться назад"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
+      {/* Breadcrumb navigation */}
+      <nav style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '16px',
+        fontSize: '0.85rem',
+      }}>
+        <button
+          onClick={() => router.push(`/w/${workspaceId}`)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            padding: '4px 0',
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          {activeWorkspace?.name || workspaceId}
+        </button>
+        <span style={{ color: 'var(--text-secondary)', opacity: 0.4 }}>/</span>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Админ-панель</span>
+      </nav>
 
       <AdminHeader />
 
@@ -583,6 +629,15 @@ export default function AdminPage() {
         variant={confirmConfig.variant}
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <StatusChangeModal
+        isOpen={statusChangeModal.isOpen}
+        statusName={statusChangeModal.statusName}
+        statusColor={statusChangeModal.statusColor}
+        suggestionTitle={statusChangeModal.suggestionTitle}
+        onConfirm={commitStatusChange}
+        onCancel={() => setStatusChangeModal(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

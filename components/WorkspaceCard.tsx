@@ -4,6 +4,7 @@ import { Workspace } from '@/types/workspace';
 import { BuildingStorefrontIcon, LockClosedIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import Badge from '@/components/ui/Badge';
+import { getAvatarColor } from '@/lib/utils';
 
 interface WorkspaceCardProps {
   workspace: Workspace;
@@ -45,7 +46,7 @@ export default function WorkspaceCard({ workspace }: WorkspaceCardProps) {
         <div className="card-footer">
           <div className="card-author">
             <div className="author-avatar-placeholder" style={{ 
-              background: workspace.expand?.owner?.avatar ? 'transparent' : '#3f3f46',
+              background: workspace.expand?.owner?.avatar ? 'transparent' : getAvatarColor(workspace.expand?.owner?.id || ''),
               overflow: 'hidden',
               padding: 0
             }}>

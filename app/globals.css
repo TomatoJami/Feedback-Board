@@ -269,19 +269,33 @@ h4 {
     font-size: 1rem;
   }
 
-  .revoke-btn {
+  .vote-timer-ring {
+    position: relative;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
-    gap: 4px;
-    background: rgba(244, 63, 94, 0.1);
-    color: #fb7185;
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
+    justify-content: center;
     animation: slideIn 0.3s ease;
+  }
+
+  .vote-timer-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.3));
+  }
+
+  .vote-timer-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #a78bfa;
+    text-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
   }
 
   @keyframes slideIn {
@@ -1488,5 +1502,74 @@ h4 {
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(99, 102, 241, 0.2);
+  }
+}
+
+/* =========================================
+   Mobile Responsive Styles
+   ========================================= */
+
+@media (max-width: 768px) {
+  /* Suggestion cards: vertical layout */
+  .suggestion-card {
+    flex-direction: column !important;
+  }
+  .suggestion-card .vote-control {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+
+  /* Detail page spacing */
+  .detail-card {
+    padding: 20px !important;
+  }
+  .detail-title {
+    font-size: 1.3rem !important;
+  }
+
+  /* Navbar compact */
+  .navbar {
+    padding: 12px 16px !important;
+  }
+  .workspace-title {
+    font-size: 0.9rem !important;
+  }
+
+  /* Comments area */
+  .comment-item {
+    padding: 12px !important;
+  }
+
+  /* Filter dropdowns scroll horizontal */
+  .filter-bar-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-bar-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .detail-card {
+    padding: 16px !important;
+  }
+  .detail-title {
+    font-size: 1.1rem !important;
+  }
+  .card-badges {
+    flex-wrap: wrap;
+  }
+  .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
