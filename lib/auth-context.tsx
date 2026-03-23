@@ -1,14 +1,14 @@
 'use client';
 
 import { usePathname,useRouter } from 'next/navigation';
-import type { AuthRecord } from 'pocketbase';
 import React, { createContext, useCallback, useContext, useEffect, useRef,useState } from 'react';
 import toast from 'react-hot-toast';
 
+import { clearAuthCookie, syncAuthCookie } from '@/lib/auth/cookie-sync';
+import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
+import * as authService from '@/lib/services/auth.service';
 import type { User } from '@/types';
-
-import { logger } from './logger';
 
 interface AuthContextType {
   user: User | null;
@@ -27,25 +27,8 @@ const AuthContext = createContext<AuthContextType>({
   loginWithPassword: async () => {},
   loginWithOAuth: async () => {},
   register: async () => {},
-  logout: async () => {}, // Changed to async to match standard if needed, or keeping it void
+  logout: async () => {},
 });
-
-function mapAuthRecord(record: AuthRecord | null): User | null {
-  if (!record) return null;
-  return {
-    id: record.id,
-    collectionId: record.collectionId,
-    collectionName: record.collectionName,
-    email: record.email ?? '',
-    name: record.name ?? '',
-    avatar: record.avatar ?? '',
-    role: (record as unknown as User).role ?? 'user',
-    status: (record as unknown as User).status ?? 'active',
-    plan: (record as unknown as User).plan ?? 'free',
-    created: record.created,
-    updated: record.updated,
-  };
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -54,51 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const syncCookie = useCallback(() => {
-    if (typeof document !== 'undefined') {
-      if (pb.authStore.isValid && pb.authStore.token && pb.authStore.record) {
-        // Build a minimal cookie that fits within the 4KB browser limit.
-        // exportToCookie() includes the entire user record and easily exceeds 4KB.
-        const minimalData = JSON.stringify({
-          token: pb.authStore.token,
-          record: {
-            id: pb.authStore.record.id,
-            collectionId: pb.authStore.record.collectionId,
-            role: (pb.authStore.record as unknown as User).role ?? 'user',
-            status: (pb.authStore.record as unknown as User).status ?? 'active',
-            plan: (pb.authStore.record as unknown as User).plan ?? 'free',
-          },
-        });
-        document.cookie = `pb_auth=${encodeURIComponent(minimalData)}; path=/; SameSite=Lax; max-age=2592000`;
-      } else {
-        // Clear cookie when not authenticated
-        document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      }
-    }
-  }, []);
-
+  // Initialize auth on mount
   useEffect(() => {
     async function initAuth() {
       if (isLoggingOut.current) return;
       try {
         if (pb.authStore.isValid) {
-          const authData = await pb.collection('users').authRefresh({
-             requestKey: null 
-          });
-          setUser(mapAuthRecord(authData.record));
-          syncCookie();
+          const authData = await authService.refreshAuth();
+          setUser(authService.mapAuthRecord(authData.record));
+          syncAuthCookie();
         } else {
           setUser(null);
         }
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'status' in err && err.status === 401) {
-          pb.authStore.clear();
+          authService.clearAuth();
           setUser(null);
         } else {
           // Use cached auth record as fallback
           const record = pb.authStore.record;
           if (record) {
-            setUser(mapAuthRecord(record));
+            setUser(authService.mapAuthRecord(record));
           }
         }
       } finally {
@@ -109,17 +68,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const unsubscribe = pb.authStore.onChange((_token, record) => {
-      setUser(mapAuthRecord(record));
-      syncCookie();
+      setUser(authService.mapAuthRecord(record));
+      syncAuthCookie();
     });
 
     return () => { unsubscribe(); };
-  }, [syncCookie]);
+  }, []);
 
   const loginWithPassword = useCallback(async (email: string, password: string) => {
     try {
-      await pb.collection('users').authWithPassword(email, password);
-      syncCookie();
+      await authService.loginWithPassword(email, password);
+      syncAuthCookie();
       toast.success('С возвращением!');
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err && err.status === 400) {
@@ -129,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw err;
     }
-  }, [syncCookie]);
+  }, []);
 
   const loginWithOAuth = useCallback(async () => {
     try {
@@ -137,39 +96,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.info(`Available auth methods in PB: ${JSON.stringify(methods, null, 2)}`);
 
       logger.info('Starting OAuth2 flow with provider: google');
-      const response = await pb.collection('users').authWithOAuth2({ 
-        provider: 'google',
-        requestKey: null,
-        createData: {
-          role: 'user',
-          status: 'active',
-          plan: 'free',
-          emailVisibility: true,
-        }
-      });
+      const response = await authService.loginWithOAuth();
       logger.info(`OAuth2 response received: ${JSON.stringify(response, null, 2)}`);
-      syncCookie();
+      syncAuthCookie();
     } catch (err: unknown) {
       logger.error(`OAuth2 FULL ERROR details: ${JSON.stringify(err, null, 2)}`);
       logger.error('OAuth2 login failed:', err);
       throw err;
     }
-  }, [syncCookie]);
+  }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, passwordConfirm: string) => {
     try {
-      await pb.collection('users').create({
-        name,
-        email,
-        password,
-        passwordConfirm,
-        emailVisibility: true,
-        role: 'user',
-        status: 'active',
-        plan: 'free',
-      });
-      await pb.collection('users').authWithPassword(email, password);
-      syncCookie();
+      await authService.registerUser(name, email, password, passwordConfirm);
+      syncAuthCookie();
       toast.success('Регистрация успешна!');
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err && err.status === 400) {
@@ -179,15 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw err;
     }
-  }, [syncCookie]);
+  }, []);
 
   const logout = useCallback(() => {
     isLoggingOut.current = true;
-    pb.authStore.clear();
+    authService.clearAuth();
     setUser(null);
-    if (typeof document !== 'undefined') {
-      document.cookie = 'pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    }
+    clearAuthCookie();
     toast.success('Вы вышли из системы');
     router.push('/');
     setTimeout(() => {
@@ -206,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.replace('/blocked');
       }
     } else if (pathname === '/blocked') {
-      // If not blocked but on /blocked page, go home
       router.replace('/');
     }
   }, [user, isLoading, router, pathname]);

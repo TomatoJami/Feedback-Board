@@ -1,43 +1,24 @@
-'use client';
+import React from 'react';
 
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import React, { useState } from 'react';
-
-import GlobalHomeHeader from '@/components/GlobalHomeHeader';
+import HomeRouter from '@/components/HomeRouter';
 import CTA from '@/components/landing/CTA';
 import FAQ from '@/components/landing/FAQ';
 import Features from '@/components/landing/Features';
 import LandingFooter from '@/components/landing/Footer';
-// Landing Page Components
 import Hero from '@/components/landing/Hero';
 import HowItWorks from '@/components/landing/HowItWorks';
 import LivePreview from '@/components/landing/LivePreview';
 import Pricing from '@/components/landing/Pricing';
 import Reveal from '@/components/ui/Reveal';
-import WorkspaceFilterSection from '@/components/WorkspaceFilterSection';
-import WorkspaceList from '@/components/WorkspaceList';
-import { useAuth } from '@/hooks/useAuth';
 
+/**
+ * Root page — Server Component.
+ * Landing content is rendered here and passed to HomeRouter as children.
+ * HomeRouter (client) decides whether to show Landing or Dashboard based on auth state.
+ */
 export default function GlobalHome() {
-  const { user, isLoading } = useAuth();
-  const [filterType, setFilterType] = useState<'all' | 'mine' | 'invited'>('all');
-  const [search, setSearch] = useState('');
-
-  // While auth is loading, show a skeleton
-  if (isLoading) {
-    return (
-      <div className="w-full max-w-6xl mx-auto py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-6 animate-pulse">
-          <div className="h-20 w-3/4 bg-white/5 rounded-2xl" />
-          <div className="h-64 w-full bg-white/5 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
-  // If NOT logged in, show the Landing Page
-  if (!user) {
-    return (
+  return (
+    <HomeRouter>
       <div className="relative min-h-screen flex flex-col items-center justify-start antialiased">
         <div className="relative z-10 w-full flex flex-col items-center pt-24 pb-16 px-6 gap-16 text-zinc-400">
           <Reveal delay={0.1}><Hero /></Reveal>
@@ -53,51 +34,6 @@ export default function GlobalHome() {
           <LandingFooter />
         </div>
       </div>
-    );
-  }
-
-  // If logged in, show the Dashboard
-  return (
-    <div className="w-full py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4">
-
-        {/* Header and Filters stacked vertically */}
-        <GlobalHomeHeader filterType={filterType}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
-            {/* Search Input */}
-            <div className="relative w-full max-w-lg">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Поиск по пространствам..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full transition-all outline-none focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/15"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px 16px 12px 42px',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.95rem'
-                }}
-              />
-            </div>
-
-            <WorkspaceFilterSection
-              filterType={filterType}
-              setFilterType={setFilterType}
-              user={user}
-            />
-          </div>
-        </GlobalHomeHeader>
-
-        {/* Main Content Area */}
-        <div className="mt-4">
-          <WorkspaceList filterType={filterType} search={search} />
-        </div>
-
-      </div>
-    </div>
+    </HomeRouter>
   );
 }

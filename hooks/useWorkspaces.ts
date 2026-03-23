@@ -1,6 +1,7 @@
 import { useEffect,useState } from 'react';
 
 import pb from '@/lib/pocketbase';
+import { fetchUserMemberships, fetchWorkspaces as fetchWorkspacesService } from '@/lib/services/workspaces.service';
 import type { Workspace } from '@/types/workspace';
 
 export function useWorkspaces() {
@@ -12,23 +13,15 @@ export function useWorkspaces() {
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchWorkspaces() {
+    async function load() {
       try {
         setIsLoading(true);
-        // Fetch public workspaces and user's workspaces
-        const records = await pb.collection('workspaces').getFullList<Workspace>({
-          sort: '-created',
-          expand: 'owner',
-        });
+        const records = await fetchWorkspacesService();
 
         let invitedIds: string[] = [];
         if (pb.authStore.record) {
           try {
-            const memberRecords = await pb.collection('workspace_members').getFullList({
-              filter: `user = "${pb.authStore.record.id}"`,
-              requestKey: null
-            });
-            invitedIds = memberRecords.map(m => m.workspace);
+            invitedIds = await fetchUserMemberships(pb.authStore.record.id);
           } catch (e) {
             console.error('Failed to fetch invited workspaces', e);
           }
@@ -51,7 +44,7 @@ export function useWorkspaces() {
       }
     }
 
-    fetchWorkspaces();
+    load();
 
     // Subscribe to realtime updates
     const subscribe = async () => {

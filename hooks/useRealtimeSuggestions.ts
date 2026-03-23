@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef,useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
+import { fetchSuggestion, fetchSuggestions, resolveWorkspaceId } from '@/lib/services/suggestions.service';
 import type { Suggestion } from '@/types';
 
 export function useRealtimeSuggestions(workspaceId?: string, initialSuggestions: Suggestion[] = []) {
@@ -13,19 +14,13 @@ export function useRealtimeSuggestions(workspaceId?: string, initialSuggestions:
   const realWorkspaceIdRef = useRef<string | null>(null);
 
   // Fetch all suggestions
-  const fetchSuggestions = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!workspaceId) return;
     try {
-      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
-      realWorkspaceIdRef.current = workspaceRecord.id;
+      const resolvedId = await resolveWorkspaceId(workspaceId);
+      realWorkspaceIdRef.current = resolvedId;
 
-      // Check both ID (if Relation) and slug (if Text field legacy)
-      const records = await pb.collection('suggestions').getFullList<Suggestion>({
-        filter: `workspace_id = "${workspaceRecord.id}" || workspace_id = "${workspaceId}"`,
-        sort: '-created',
-        expand: 'author,category_id,status_id',
-        requestKey: null, // Disable auto-cancellation
-      });
+      const records = await fetchSuggestions(resolvedId, workspaceId);
       setSuggestions(records);
     } catch (err) {
       logger.error('Failed to fetch suggestions:', err);
@@ -35,18 +30,14 @@ export function useRealtimeSuggestions(workspaceId?: string, initialSuggestions:
   }, [workspaceId]);
 
   useEffect(() => {
-    fetchSuggestions();
+    fetchAll();
 
     // Subscribe to real-time updates
     pb.collection('suggestions').subscribe('*', async (e: RecordSubscription<Suggestion>) => {
       let record = e.record;
       if (e.action === 'create' || e.action === 'update') {
         try {
-          // Fetch expanded record because real-time payload doesn't include it
-          record = await pb.collection('suggestions').getOne<Suggestion>(e.record.id, {
-            expand: 'author,category_id,status_id',
-            requestKey: null,
-          });
+          record = await fetchSuggestion(e.record.id);
         } catch (err) {
           logger.error('Failed to fetch expanded record for real-time update:', err);
         }
@@ -72,7 +63,7 @@ export function useRealtimeSuggestions(workspaceId?: string, initialSuggestions:
     return () => {
       pb.collection('suggestions').unsubscribe('*');
     };
-  }, [fetchSuggestions]);
+  }, [fetchAll]);
 
-  return { suggestions, isLoading, refetch: fetchSuggestions };
+  return { suggestions, isLoading, refetch: fetchAll };
 }

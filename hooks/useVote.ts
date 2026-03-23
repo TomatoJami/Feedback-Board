@@ -4,8 +4,8 @@ import { useCallback, useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { logger } from '@/lib/logger';
-import pb from '@/lib/pocketbase';
-import type { Vote, VoteType } from '@/types';
+import { castVote, getUserVote } from '@/lib/services/votes.service';
+import type { VoteType } from '@/types';
 
 import { useAuth } from './useAuth';
 
@@ -48,14 +48,10 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
     if (!user) return;
     (async () => {
       try {
-        const result = await pb.collection('votes').getList<Vote>(1, 1, {
-          filter: `user = "${user.id}" && suggestion = "${suggestionId}"`,
-          requestKey: null,
-        });
-        if (result.totalItems > 0) {
-          setVoteType(result.items[0].type || 'upvote');
-          setVoteId(result.items[0].id);
-          // Vote exists in DB and page was loaded/refreshed → locked
+        const existingVote = await getUserVote(user.id, suggestionId);
+        if (existingVote) {
+          setVoteType(existingVote.type || 'upvote');
+          setVoteId(existingVote.id);
           setIsLocked(true);
           setIsPending(false);
         }
@@ -145,24 +141,7 @@ export function useVote(suggestionId: string, initialScore?: number): UseVoteRet
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/vote', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${pb.authStore.token}`,
-        },
-        body: JSON.stringify({
-          suggestionId,
-          type,
-          action: 'vote',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Vote failed on server');
-      }
-
-      const result = await response.json();
+      const result = await castVote(suggestionId, type);
       setVoteId(result.id);
       // Start/restart the 15s change window
       startChangeTimer();

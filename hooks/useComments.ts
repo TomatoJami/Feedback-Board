@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef,useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
+import * as commentsService from '@/lib/services/comments.service';
+import { getUserCommentVotes, voteOnComment } from '@/lib/services/votes.service';
 import type { SuggestionComment, UserPrefix } from '@/types';
 
 const CHANGE_WINDOW_MS = 15_000;
@@ -30,42 +32,20 @@ export function useComments(suggestionId: string, workspaceId?: string) {
   const fetchComments = useCallback(async () => {
     try {
       // 1. Fetch comments
-      const records = await pb.collection('comments').getFullList<SuggestionComment>({
-        filter: `suggestion = "${suggestionId}"`,
-        sort: 'created',
-        expand: 'user',
-        requestKey: null,
-      });
+      const records = await commentsService.fetchComments(suggestionId);
       setComments(records);
 
       // 2. Fetch current user's votes on these comments if logged in
       if (pb.authStore.record) {
-        const votes = await pb.collection('comment_votes').getFullList({
-          filter: `user = "${pb.authStore.record.id}" && comment.suggestion = "${suggestionId}"`,
-          requestKey: null,
-        });
-        const voteMap: Record<string, 'upvote' | 'downvote'> = {};
-        votes.forEach(v => {
-          voteMap[v.comment] = v.type as 'upvote' | 'downvote';
-          // Existing votes loaded from DB = locked (page was refreshed/loaded)
-          lockedVotesRef.current.add(v.comment);
-        });
+        const voteMap = await getUserCommentVotes(pb.authStore.record.id, suggestionId);
+        // Mark all existing votes as locked
+        Object.keys(voteMap).forEach(commentId => lockedVotesRef.current.add(commentId));
         setUserVotes(voteMap);
       }
 
       // 3. Fetch workspace members mapped to prefixes
       if (workspaceId) {
-        const members = await pb.collection('workspace_members').getFullList({
-          filter: `workspace = "${workspaceId}"`,
-          expand: 'prefixes',
-          requestKey: null,
-        });
-        const prefixMap: Record<string, UserPrefix[]> = {};
-        members.forEach(m => {
-          if (m.expand?.prefixes) {
-            prefixMap[m.user] = m.expand.prefixes;
-          }
-        });
+        const prefixMap = await commentsService.fetchMemberPrefixes(workspaceId);
         setMemberPrefixes(prefixMap);
       }
 
@@ -121,9 +101,9 @@ export function useComments(suggestionId: string, workspaceId?: string) {
       });
       
       if (e.action === 'create') {
-        pb.collection('comments').getOne<SuggestionComment>(e.record.id, { expand: 'user' }).then(full => {
+        commentsService.fetchComment(e.record.id).then(full => {
           setComments(prev => prev.map(c => c.id === full.id ? full : c));
-        }).catch((_e) => {});
+        }).catch(() => {});
       }
     });
 
@@ -156,7 +136,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     }, CHANGE_WINDOW_MS);
   }, []);
 
-  const voteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
+  const handleVoteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
     if (!pb.authStore.record) return;
     const userId = pb.authStore.record.id;
     const existingType = userVotes[commentId];
@@ -170,37 +150,14 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     }
 
     try {
-      if (existingType) {
-        // Change vote (e.g. up -> down)
-        const existing = await pb.collection('comment_votes').getFirstListItem(`user="${userId}" && comment="${commentId}"`);
-        await pb.collection('comment_votes').update(existing.id, { type });
-        
-        // Update counters on comment
-        const oldField = existingType === 'upvote' ? 'upvotes' : 'downvotes';
-        const newField = type === 'upvote' ? 'upvotes' : 'downvotes';
-        await pb.collection('comments').update(commentId, { 
-          [`${oldField}-`]: 1,
-          [`${newField}+`]: 1
-        });
-      } else {
-        // New vote
-        await pb.collection('comment_votes').create({
-          user: userId,
-          comment: commentId,
-          type,
-        });
-        
-        // Update counter on comment
-        const field = type === 'upvote' ? 'upvotes' : 'downvotes';
-        await pb.collection('comments').update(commentId, { [`${field}+`]: 1 });
-      }
+      await voteOnComment(userId, commentId, existingType || null, type);
       
       setUserVotes(prev => ({ ...prev, [commentId]: type }));
       startPendingTimer(commentId, type);
 
       // Refresh comment to get updated counts
       try {
-        const updated = await pb.collection('comments').getOne<SuggestionComment>(commentId, { expand: 'user' });
+        const updated = await commentsService.fetchComment(commentId);
         setComments(prev => prev.map(c => c.id === commentId ? updated : c));
       } catch (_err) { }
     } catch (err: unknown) {
@@ -209,26 +166,20 @@ export function useComments(suggestionId: string, workspaceId?: string) {
   }, [userVotes, startPendingTimer]);
 
   const addComment = useCallback(async (userId: string, text: string, parentId?: string) => {
-    const record = await pb.collection('comments').create({
-      user: userId,
-      suggestion: suggestionId,
+    const full = await commentsService.createComment({
+      userId,
+      suggestionId,
       text,
-      parent_id: parentId || null,
-      workspace_id: workspaceId || null,
+      parentId,
+      workspaceId,
     });
-    
-    try {
-      const full = await pb.collection('comments').getOne<SuggestionComment>(record.id, { expand: 'user' });
-      setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
-      return full;
-    } catch (_err) {
-      return record;
-    }
+    setComments((prev) => [...prev.filter((c) => c.id !== full.id), full]);
+    return full;
   }, [suggestionId, workspaceId]);
 
-  const updateComment = useCallback(async (id: string, text: string) => {
+  const handleUpdateComment = useCallback(async (id: string, text: string) => {
     try {
-      const record = await pb.collection('comments').update(id, { text });
+      const record = await commentsService.updateComment(id, text);
       setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
       return record;
     } catch (err: unknown) {
@@ -237,9 +188,9 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     }
   }, []);
 
-  const deleteComment = useCallback(async (id: string) => {
+  const handleDeleteComment = useCallback(async (id: string) => {
     try {
-      await pb.collection('comments').delete(id);
+      await commentsService.deleteComment(id);
       setComments((prev) => prev.filter((c) => c.id !== id));
     } catch (err: unknown) {
       logger.error('Failed to delete comment:', err);
@@ -254,9 +205,9 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     memberPrefixes,
     pendingVotes,
     addComment, 
-    voteComment, 
-    updateComment,
-    deleteComment,
+    voteComment: handleVoteComment, 
+    updateComment: handleUpdateComment,
+    deleteComment: handleDeleteComment,
     refresh: fetchComments 
   };
 }

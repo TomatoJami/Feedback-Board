@@ -5,6 +5,7 @@ import { useCallback,useEffect, useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
+import * as notificationsService from '@/lib/services/notifications.service';
 import type { Notification } from '@/types';
 
 import { useAuth } from './useAuth';
@@ -14,14 +15,10 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!user) return;
     try {
-      const records = await pb.collection('notifications').getFullList<Notification>({
-        filter: `user = "${user.id}"`,
-        sort: '-created',
-        requestKey: null,
-      });
+      const records = await notificationsService.fetchNotifications(user.id);
       setNotifications(records);
     } catch (err) {
       logger.error('Failed to fetch notifications:', err);
@@ -30,7 +27,7 @@ export function useNotifications() {
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      await pb.collection('notifications').update(notificationId, { read: true });
+      await notificationsService.markAsRead(notificationId);
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
@@ -42,9 +39,7 @@ export function useNotifications() {
   const markAllAsRead = useCallback(async () => {
     const unread = notifications.filter((n) => !n.read);
     try {
-      await Promise.all(
-        unread.map((n) => pb.collection('notifications').update(n.id, { read: true }))
-      );
+      await notificationsService.markAllAsRead(unread.map(n => n.id));
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
       logger.error('Failed to mark all as read:', err);
@@ -54,7 +49,7 @@ export function useNotifications() {
   useEffect(() => {
     if (!user) return;
     setTimeout(() => {
-      fetchNotifications();
+      fetchAll();
     }, 0);
 
     // Subscribe to real-time notifications for this user
@@ -79,7 +74,7 @@ export function useNotifications() {
     return () => {
       pb.collection('notifications').unsubscribe('*');
     };
-  }, [user, fetchNotifications]);
+  }, [user, fetchAll]);
 
   return { notifications, unreadCount, markAsRead, markAllAsRead };
 }

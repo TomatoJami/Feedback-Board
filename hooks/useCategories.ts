@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef,useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
+import { resolveWorkspaceId } from '@/lib/services/suggestions.service';
 import type { Category } from '@/types';
 
 export function useCategories(workspaceId?: string) {
@@ -15,12 +16,11 @@ export function useCategories(workspaceId?: string) {
   const fetchCategories = useCallback(async () => {
     if (!workspaceId) return;
     try {
-      const workspaceRecord = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}" || id = "${workspaceId}"`, { requestKey: null });
-      realWorkspaceIdRef.current = workspaceRecord.id;
+      const resolvedId = await resolveWorkspaceId(workspaceId);
+      realWorkspaceIdRef.current = resolvedId;
 
-      // Check both ID (if Relation) and slug (if Text field legacy)
       const records = await pb.collection('categories').getFullList<Category>({
-        filter: `workspace_id = "${workspaceRecord.id}" || workspace_id = "${workspaceId}"`,
+        filter: `workspace_id = "${resolvedId}" || workspace_id = "${workspaceId}"`,
         sort: 'name',
         requestKey: null,
       });
