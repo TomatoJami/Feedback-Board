@@ -1,6 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { 
+  ExclamationTriangleIcon, 
+  ExclamationCircleIcon, 
+  InformationCircleIcon 
+} from '@heroicons/react/24/outline';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -38,10 +43,10 @@ export default function ConfirmModal({
 
   if (!isOpen) return null;
 
-  const icons: Record<string, string> = {
-    warning: '⚠️',
-    danger: '🚨',
-    info: 'ℹ️',
+  const icons: Record<string, React.ReactNode> = {
+    warning: <ExclamationTriangleIcon className="w-12 h-12 text-amber-500 mx-auto" />,
+    danger: <ExclamationCircleIcon className="w-12 h-12 text-rose-500 mx-auto" />,
+    info: <InformationCircleIcon className="w-12 h-12 text-blue-500 mx-auto" />,
   };
 
   return (

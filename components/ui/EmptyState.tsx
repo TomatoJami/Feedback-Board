@@ -1,3 +1,4 @@
+import { MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import React from 'react';
 
@@ -10,7 +11,14 @@ interface EmptyStateProps {
 export default function EmptyState({ isMine, isAdmin, workspaceSlug }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center px-10 py-24 sm:py-32 text-center bg-zinc-900/40 rounded-[32px] border border-white/5 mt-8 mb-24">
-      <span className="text-5xl mb-6">{isMine ? '📝' : '🔍'}</span>
+      <div className="w-20 h-20 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-8 relative group">
+        <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        {isMine ? (
+          <PencilSquareIcon className="w-10 h-10 text-indigo-400 relative z-10" />
+        ) : (
+          <MagnifyingGlassIcon className="w-10 h-10 text-zinc-400 relative z-10" />
+        )}
+      </div>
       <h3 className="text-2xl font-bold text-white">
         {isMine ? 'У вас пока нет предложений' : 'Ничего не найдено'}
       </h3>

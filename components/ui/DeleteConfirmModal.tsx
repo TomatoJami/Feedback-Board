@@ -1,3 +1,4 @@
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import React from 'react';
 
 interface DeleteConfirmModalProps {
@@ -20,7 +21,9 @@ export default function DeleteConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <div className="modal-content animate-in zoom-in duration-200" style={{ maxWidth: '440px', width: '100%', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: '2.5rem', marginBottom: '16px', textAlign: 'center' }}>⚠️</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <ExclamationTriangleIcon className="w-12 h-12 text-amber-500" />
+        </div>
         <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', textAlign: 'center' }}>Удалить предложение?</h3>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.6', textAlign: 'center' }}>
           Это действие необратимо. Пожалуйста, введите название предложения для подтверждения: <br/>
