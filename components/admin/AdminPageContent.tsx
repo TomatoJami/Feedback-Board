@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 import { 
   ChartBarIcon,
   ClipboardDocumentIcon, 
@@ -10,6 +8,7 @@ import {
   LightBulbIcon,
   UsersIcon
 } from '@heroicons/react/24/outline';
+import React from 'react';
 
 import AdminHeader from '@/components/admin/AdminHeader';
 import AnalyticsTab from '@/components/admin/AnalyticsTab';

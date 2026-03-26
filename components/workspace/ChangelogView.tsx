@@ -2,8 +2,8 @@
 
 import React, { useMemo } from 'react';
 
-import type { Status, Suggestion } from '@/types';
 import { formatAbsoluteDate } from '@/lib/timeago';
+import type { Status, Suggestion } from '@/types';
 
 interface ChangelogViewProps {
   suggestions: Suggestion[];

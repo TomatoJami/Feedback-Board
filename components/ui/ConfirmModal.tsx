@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
 import { 
-  ExclamationTriangleIcon, 
   ExclamationCircleIcon, 
+  ExclamationTriangleIcon, 
   InformationCircleIcon 
 } from '@heroicons/react/24/outline';
+import React, { useEffect, useRef } from 'react';
 
 interface ConfirmModalProps {
   isOpen: boolean;

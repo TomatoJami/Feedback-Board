@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
 
@@ -8,7 +9,6 @@ import RoadmapView from '@/components/workspace/RoadmapView';
 import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
 import { useStatuses } from '@/hooks/useStatuses';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
-import Link from 'next/link';
 
 export default function RoadmapPage() {
   const params = useParams();

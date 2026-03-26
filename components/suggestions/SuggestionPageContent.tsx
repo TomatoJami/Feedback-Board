@@ -6,8 +6,8 @@ import React from 'react';
 
 import CommentsSection from '@/components/comments/CommentsSection';
 import SuggestionDetailCard from '@/components/suggestions/SuggestionDetailCard';
-import MarkdownEditor from '@/components/ui/MarkdownEditor';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
 import { useSuggestion } from '@/hooks/useSuggestion';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
 import { getAvatarColor } from '@/lib/utils';

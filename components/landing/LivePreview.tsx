@@ -1,12 +1,11 @@
 'use client';
 
 import { 
+  BellIcon,
   ChatBubbleLeftRightIcon, 
   ChevronLeftIcon, 
   MapPinIcon,
-  PlusIcon,
-  BellIcon
-} from '@heroicons/react/24/outline';
+  PlusIcon} from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import React from 'react';
 

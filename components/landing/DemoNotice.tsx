@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import Reveal from '@/components/ui/Reveal';
 
 export default function DemoNotice() {

@@ -72,7 +72,7 @@ export default function NewSuggestionPage() {
           ).catch(() => null)
         ]);
 
-        let currentSettings: any = settingsRecords.length > 0 ? { ...settingsRecords[0] } : {};
+        const currentSettings: any = settingsRecords.length > 0 ? { ...settingsRecords[0] } : {};
         if (workspaceRecord) {
           currentSettings.is_frozen = !!workspaceRecord.is_frozen;
         }

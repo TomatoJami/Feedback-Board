@@ -15,7 +15,7 @@ function FAQItem({ question, answer, isOpen, onToggle }: { question: string, ans
         className="w-full flex items-center justify-between text-left transition-all"
         style={{ padding: '40px' }}
       >
-        <span className={`text-xl md:text-2xl font-bold transition-all duration-300 ${isOpen ? 'text-indigo-400' : 'text-white'
+        <span className={`text-xl md:text-2xl font-bold transition-all duration-300 truncate pr-4 ${isOpen ? 'text-indigo-400' : 'text-white'
           }`}>
           {question}
         </span>
@@ -50,8 +50,8 @@ const FAQ_DATA = [
     answer: "Платформа идеально подходит для продакт-менеджеров, разработчиков, дизайнеров и всех, кто хочет слышать своих пользователей и строить roadmap на основе реальных данных, а не догадок."
   },
   {
-    question: "Можно ли кастомизировать борд под свой бренд?",
-    answer: "Конечно! Вы можете настраивать категории, статусы, названия и логотипы, чтобы процесс полностью соответствовал вашему рабочему циклу и фирменному стилю."
+    question: "Можно ли кастомизировать борд?",
+    answer: "Да, вы можете полностью настроить борд под свои нужды: создавать собственные категории с иконками, управлять статусами и их цветами, добавлять уникальные префиксы для участников и выбирать между публичным или приватным доступом к вашему пространству."
   },
   {
     question: "Как управлять доступом и ролями?",

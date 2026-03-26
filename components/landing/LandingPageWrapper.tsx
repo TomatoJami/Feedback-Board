@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import LandingFooter from '@/components/landing/Footer';
 
 interface LandingPageWrapperProps {
