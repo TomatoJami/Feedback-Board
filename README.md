@@ -1,88 +1,291 @@
-# Feedback Board
+# Feedback Board — Платформа для сбора и управления обратной связью
 
-A feedback management system developed with Next.js and PocketBase. The platform supports multi-tenant workspaces, threaded discussions, and custom voting mechanics, designed for product teams to collect and organize user input.
+Система управления обратной связью, предназначенная для сбора, организации и приоритизации пользовательских предложений. Проект реализован на стеке Next.js, React и PocketBase, поддерживает многопользовательские рабочие пространства (workspaces), древовидные обсуждения и систему голосования.
 
-## Features
+**Демонстрационная версия**: `http://localhost:3000`  
+**Панель администратора PocketBase**: `http://127.0.0.1:8090/_/`  
 
-- Workspaces: Multi-tenant environment support. Users can create, join, and filter suggestions by workspace context.
-- Suggestions & Voting: Core system for creating suggestions, complete with upvote and downvote capabilities.
-- Discussion Threads: Multi-level nested commenting system.
-- Administrative Controls: Dedicated admin dashboard for content moderation, category management, and workflow configuration.
-- Workspace Customization: Configurable URL slugs and prefixes per workspace.
-- Infrastructure Monitoring: Prometheus and Grafana integration for stack telemetry (Nginx, PocketBase, Redis, and container metrics via cAdvisor).
-- User Profiles: Avatar management, security settings, and access control.
+---
 
-## Technology Stack
+## Содержание
 
-### Frontend
-- Next.js 15 (App Router)
-- React
-- Tailwind CSS
+- [Быстрый старт](#быстрый-старт)
+- [Основные возможности](#основные-возможности)
+- [Роли и права доступа](#роли-и-права-доступа)
+- [Технологический стек](#технологический-стек)
+- [Структура проекта](#структура-проекта)
+- [Пользовательские сценарии](#пользовательские-сценарии)
+- [Установка и запуск](#установка-и-запуск)
+- [Конфигурация](#конфигурация)
+- [Структура базы данных](#структура-базы-данных)
+- [Безопасность](#безопасность)
 
-### Backend & Infrastructure
-- PocketBase (Authentication, Database, API)
-- Grafana & Prometheus (Monitoring)
+---
 
-## Project Structure
+## Быстрый старт
+
+Процедура первичной настройки и запуска:
+
+```bash
+# 1. Клонирование репозитория
+git clone https://github.com/TomatoJami/Feedback-Board.git
+cd Feedback-Board
+
+# 2. Установка зависимостей
+npm install
+
+# 3. Настройка PocketBase
+# Скачайте исполняемый файл PocketBase с официального сайта (https://pocketbase.io/docs/)
+# Разместите его в корне проекта или в отдельной директории.
+# Импортируйте схему из файла pb-schema.json через панель администратора.
+
+# 4. Запуск PocketBase (в отдельном терминале)
+./pocketbase serve
+
+# 5. Запуск фронтенда
+npm run dev
+```
+
+После запуска приложение будет доступно по адресу http://localhost:3000. В административном интерфейсе можно:
+- Настроить рабочее пространство (workspace).
+- Управлять предложениями (suggestions) и категориями.
+- Модерировать обсуждения.
+
+---
+
+## Основные возможности
+
+### Изолированные рабочие пространства (Multi-Tenant Workspaces)
+- Каждая организация работает в выделенном пространстве.
+- Настраиваемые URL-адреса (слаги).
+- Управление участниками с разграничением ролей.
+- Поддержка публичных и приватных пространств.
+
+### Система предложений и голосования
+- Создание и редактирование идей с поддержкой Markdown.
+- Категоризация предложений.
+- Управление жизненным циклом идеи через статусы (Open, In Progress, Completed и др.).
+- Система оценки (Upvote/Downvote) с автоматическим расчетом популярности.
+
+### Обсуждения
+- Многоуровневые комментарии.
+- Система уведомлений в реальном времени.
+- Поддержка Markdown в комментариях с предпросмотром.
+
+### Панель управления (Admin Dashboard)
+- Мониторинг ключевых метрик.
+- Управление категориями, статусами и пользователями.
+- Инструменты модерации контента.
+- Объединение (merge) дублирующих предложений.
+
+---
+
+## Роли и права доступа
+
+Система разделяет права доступа на два уровня: глобальный (сайт) и локальный (рабочее пространство).
+
+### Глобальные роли
+- **Глобальный администратор (Site Admin)**: Пользователь с ролью `admin` в системе. Имеет неограниченный доступ ко всем рабочим пространствам, пользователям и настройкам системы.
+- **Пользователь (User)**: Обычный зарегистрированный пользователь системы.
+
+### Роли внутри рабочего пространства (Workspace Roles)
+- **Владелец (Owner)**: Пользователь, создавший пространство. Обладает полными правами управления пространством, включая его удаление.
+- **Администратор (Admin)**: Назначаемая роль. Позволяет управлять категориями, статусами, приглашать участников и модерировать любые предложения.
+- **Модератор (Moderator)**: Имеет доступ к инструментам модерации контента (редактирование и удаление чужих предложений/комментариев).
+- **Участник (Member)**: Может создавать предложения, голосовать и оставлять комментарии внутри пространства.
+
+---
+
+## Технологический стек
+
+### Фронтенд
+| Технология | Назначение |
+|-----------|-----------|
+| **Next.js 16.1.7** | Full-stack фреймворк (App Router) |
+| **React 19.2.3** | Библиотека пользовательского интерфейса |
+| **TypeScript 5.x** | Статическая типизация |
+| **Tailwind CSS 4.x** | Стилизация |
+| **React Hot Toast** | Уведомления |
+
+### Бэкенд и база данных
+| Технология | Назначение |
+|-----------|-----------|
+| **PocketBase 0.25.0** | Backend-as-a-Service (API, Auth, SQLite) |
+
+### Инфраструктура
+| Инструмент | Назначение |
+|-----------|-----------|
+| **Coolify** | Деплоймент |
+| **Zabbix / Dozzle** | Мониторинг и логирование |
+
+---
+
+## Структура проекта
 
 ```
 feedback-board/
-├── app/                  # Next.js App Router (Pages, Layouts)
-│   ├── admin/           # Admin Dashboard
-│   ├── auth/            # Authentication flows
-│   ├── w/               # Workspace-specific routing
-│   └── suggestions/     # Suggestion details & discussions
-├── components/          # React components
-├── hooks/               # Custom React hooks
-├── lib/                 # Core utilities
-├── public/              # Static assets
-└── types/               # TypeScript definitions
+├── README.md                          - Основной файл документации
+├── pb-schema.json                    - Схема базы данных PocketBase
+├── package.json                       - Зависимости и скрипты
+├── tsconfig.json                      - Конфигурация TypeScript
+├── next.config.ts                     - Конфигурация Next.js
+├── eslint.config.mjs                  - Конфигурация ESLint
+├── postcss.config.mjs                 - Конфигурация PostCSS
+├── proxy.ts                           - Вспомогательный прокси-сервер
+│
+├── 📁 app/                               ← Next.js App Router (Маршрутизация)
+│   ├── 📄 layout.tsx                     ← Корневой макет
+│   ├── 📄 page.tsx                       ← Главная страница
+│   ├── 📁 admin/                         ← Панель администрирования
+│   ├── 📁 api/                           ← Обработчики API (Stripe, Merge и др.)
+│   ├── 📁 auth/                          ← Маршруты аутентификации
+│   ├── 📁 create-workspace/              ← Создание рабочих пространств
+│   ├── 📁 w/[workspaceId]/               ← Управление конкретным пространством
+│   └── ...
+│
+├── 📁 components/                        ← React-компоненты
+│   ├── 📁 admin/                         ← Компоненты панели администратора
+│   ├── 📁 ui/                            ← Базовые UI-компоненты
+│   ├── 📁 suggestions/                   ← Работа с предложениями
+│   └── ...
+│
+├── 📁 hooks/                             ← Пользовательские React-хуки
+│   ├── useAuth.ts                        ← Контекст авторизации
+│   ├── useAdmin.ts                       ← Логика администрирования
+│   └── ...
+│
+├── 📁 lib/                               ← Утилиты и сервисы
+│   ├── pocketbase.ts                     ← Клиент PocketBase
+│   └── 📁 services/                      ← Инкапсуляция логики API
+│
+└── 📁 public/                            ← Статические ресурсы
 ```
 
-## Installation & Setup
+---
 
-1. Clone the repository:
-   ```bash
-   git clone [repository-url]
-   cd feedback-board
-   ```
+## Пользовательские сценарии
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+### 1. Онбординг (Onboarding)
+- Регистрация → Подтверждение Email → Авторизация.
+- Создание личного или корпоративного рабочего пространства.
+- Настройка первичных категорий и статусов для сбора обратной связи.
 
-3. Configure PocketBase:
-   - Download the PocketBase executable.
-   - Start the server: `./pocketbase serve`
-   - Access the admin UI at `http://127.0.0.1:8090/_/` and import the schema definition (`pb-schema.json`) via Settings -> Import collections.
+### 2. Взаимодействие (Engagement)
+- Публикация идей и предложений.
+- Обсуждение в комментариях и голосование за приоритетные задачи.
+- Получение уведомлений об изменении статуса предложений.
 
-4. Environment Variables:
-   Create a `.env.local` file in the root directory:
-   ```env
-   NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
-   ```
+### 3. Управление (Management)
+- Модерация входящего потока идей.
+- Назначение исполнителей на конкретные предложения.
+- Объединение дублирующихся идей для консолидации голосов.
+- Анализ популярности фич через метрики.
 
-5. Run the development server:
-   ```bash
-   npm run dev
-   ```
+---
 
-## Infrastructure & Monitoring
+## Установка и запуск
 
-The project includes configurations for telemetry and monitoring. Refer to the monitoring configuration files to provision the stack, which includes:
-- Prometheus (Metrics collection)
-- Grafana (Dashboards)
-- cAdvisor (Container metrics)
-- Specialized exporters
+### Системные требования
+- **Node.js**: версия 20 или выше.
+- **npm**: версия 9 или выше.
+- **PocketBase**: версия 0.25.0 или выше.
 
-## Security & Access Control
+---
 
-- Data access is governed by workspace membership and visibility settings.
-- Comments and suggestions can be managed by their respective authors or system administrators.
-- The Admin Panel requires explicit role designation.
-- PocketBase API rules enforce data boundaries between workspaces and users.
+## Конфигурация
 
-## License
+### Переменные окружения (`.env.local`)
 
-MIT
+```env
+# Базовые настройки
+NEXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090
+
+# Настройки Stripe (платежи)
+STRIPE_SECRET_KEY=sk_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Учетные данные системы (опционально)
+PB_ADMIN_EMAIL=admin@example.com
+PB_ADMIN_PASSWORD=password
+```
+
+---
+
+## Структура базы данных
+
+### Коллекция `users` (Пользователи)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| **email** | Email | Уникальный адрес пользователя |
+| **name** | Text | Отображаемое имя |
+| **avatar** | File | Изображение профиля |
+| **role** | Select | Глобальная роль: `user`, `admin` |
+| **plan** | Select | Тарифный план: `free`, `pro` |
+| **status** | Select | Статус аккаунта: `active`, `blocked` |
+
+### Коллекция `workspaces` (Рабочие пространства)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| **name** | Text | Название пространства |
+| **slug** | Text | Уникальный идентификатор в URL |
+| **owner** | Relation | Ссылка на владельца (users) |
+| **isPrivate** | Bool | Флаг приватности пространства |
+| **is_frozen** | Bool | Приостановка активности (заморозка) |
+
+### Коллекция `workspace_members` (Участники)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| **workspace** | Relation | Ссылка на рабочее пространство |
+| **user** | Relation | Ссылка на пользователя |
+| **role** | Select | Роль в пространстве: `admin`, `moderator`, `user` |
+| **prefixes** | Relation | Список префиксов пользователя (user_prefixes) |
+
+### Коллекция `suggestions` (Предложения)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| **title** | Text | Заголовок идеи |
+| **description** | Editor | Подробное описание (HTML) |
+| **category_id** | Relation | Категория (categories) |
+| **status_id** | Relation | Текущий статус (statuses) |
+| **author** | Relation | Автор идеи (users) |
+| **workspace_id** | Relation | Ссылка на пространство |
+| **votes_count** | Number | Количество набранных голосов |
+| **pinned** | Bool | Закреплено ли предложение сверху |
+| **merged_into** | Relation | Ссылка на основную идею (при объединении) |
+
+### Коллекция `comments` (Комментарии)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| **text** | Text | Текст комментария |
+| **user** | Relation | Автор (users) |
+| **suggestion** | Relation | Ссылка на предложение |
+| **parent_id** | Relation | Ссылка на родительский комментарий (для веток) |
+| **upvotes / downvotes** | Number | Счетчики голосов за комментарий |
+
+### Вспомогательные коллекции
+- **categories**: Категории идей (ID, name, icon, workspace_id).
+- **statuses**: Статусы идей (ID, name, color, workspace_id).
+- **votes**: Журнал голосования (user_id, suggestion_id, type).
+- **notifications**: Уведомления пользователей (user, message, link, read).
+- **user_prefixes**: Настраиваемые префиксы/теги для пользователей.
+- **settings**: Конфигурация пространства (default_status, deletable_statuses).
+- **logs**: Системный журнал ошибок и событий.
+
+---
+
+## Безопасность
+
+### Row-Level Security (RLS)
+Изоляция данных реализована на уровне API PocketBase через фильтры доступа (Rules):
+- Пользователи имеют доступ только к контенту тех `workspaces`, в которых они состоят или которые являются публичными.
+- Модификация ресурсов (категории, статусы, чужие предложения) разрешена только пользователям с соответствующими ролями (`admin`, `moderator`, `owner`).
+- Дополнительная валидация данных происходит на стороне клиента через схемы Zod.
+
+---
+
+## Поддержка и лицензия
+
+При возникновении проблем создавайте Issue в репозитории проекта.
+
+**Лицензия**: MIT.

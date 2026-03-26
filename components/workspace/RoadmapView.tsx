@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React from 'react';
 
 import type { Status, Suggestion } from '@/types';
@@ -167,9 +168,11 @@ export default function RoadmapView({ suggestions, statuses, workspaceSlug }: Ro
                       overflow: 'hidden'
                     }} title={s.expand.author.name}>
                       {s.expand.author.avatar ? (
-                         <img 
+                         <Image 
                          src={`/api/files/users/${s.author}/${s.expand.author.avatar}`} 
                          alt=""
+                         width={24}
+                         height={24}
                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                        />
                       ) : s.expand.author.name.charAt(0).toUpperCase()}

@@ -1,5 +1,6 @@
 import { RecordModel } from 'pocketbase';
 
+import type { Suggestion } from '@/types/suggestion';
 import type { User } from '@/types/user';
 
 
@@ -14,8 +15,8 @@ export interface SuggestionComment extends RecordModel {
   expand?: {
     user?: User;
     workspace_id?: string;
-    suggestion?: any;
-    parent_id?: any;
+    suggestion?: Suggestion;
+    parent_id?: SuggestionComment;
   };
   workspace_id?: string;
 }

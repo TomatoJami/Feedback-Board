@@ -72,7 +72,12 @@ export async function voteOnComment(
     requestKey: null
   });
 
-  const updateData: any = {
+  const updateData: {
+    text: string;
+    user: string;
+    suggestion: string;
+    parent_id: string;
+  } = {
     text: comment.text,
     user: comment.user,
     suggestion: comment.suggestion,
