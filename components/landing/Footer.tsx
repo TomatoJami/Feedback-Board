@@ -29,8 +29,8 @@ export default function Footer() {
             <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Ресурсы</h4>
             <ul className="space-y-2">
               <li><Link href="#faq" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">FAQ<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
-              <li><Link href="/auth/login" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Документация<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
-              <li><Link href="/auth/login" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Поддержка<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
+              <li><Link href="/docs" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Документация<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
+              <li><Link href="/support" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Поддержка<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
             </ul>
           </div>
 
@@ -46,8 +46,8 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-[0.2em] opacity-30">Право</h4>
             <ul className="space-y-2">
-              <li><Link href="/auth/register" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Privacy<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
-              <li><Link href="/auth/register" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Terms<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
+              <li><Link href="/privacy" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Privacy<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
+              <li><Link href="/terms" className="text-zinc-500 hover:text-white text-sm font-medium transition-colors relative group w-fit block">Terms<span className="absolute bottom-0 left-0 w-0 h-px bg-indigo-500 group-hover:w-full transition-all duration-300"></span></Link></li>
             </ul>
           </div>
         </div>
