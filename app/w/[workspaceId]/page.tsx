@@ -129,9 +129,16 @@ function HomeContent() {
   }, [suggestions, categoryId, status, user, sortBy, debouncedSearch]);
 
   // Reset visible count when filters change
-  useEffect(() => {
+  const [prevFilters, setPrevFilters] = useState({ categoryId, status, sortBy, debouncedSearch });
+  if (
+    prevFilters.categoryId !== categoryId ||
+    prevFilters.status !== status ||
+    prevFilters.sortBy !== sortBy ||
+    prevFilters.debouncedSearch !== debouncedSearch
+  ) {
+    setPrevFilters({ categoryId, status, sortBy, debouncedSearch });
     setVisibleCount(PAGE_SIZE);
-  }, [categoryId, status, sortBy, debouncedSearch]);
+  }
 
   // Infinite scroll observer
   const loadMore = useCallback(() => {

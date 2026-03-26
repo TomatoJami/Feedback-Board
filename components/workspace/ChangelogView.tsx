@@ -11,7 +11,7 @@ interface ChangelogViewProps {
   workspaceSlug: string;
 }
 
-export default function ChangelogView({ suggestions, statuses, workspaceSlug }: ChangelogViewProps) {
+export default function ChangelogView({ suggestions, statuses: _statuses, workspaceSlug }: ChangelogViewProps) {
   // Group by month/year based on updated date
   const grouped = useMemo(() => {
     // Only show suggestions with a status

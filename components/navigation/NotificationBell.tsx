@@ -6,8 +6,7 @@ import {
   BellIcon,
   ChatBubbleLeftRightIcon,
   ClipboardDocumentIcon,
-  HandThumbUpIcon,
-  LinkIcon 
+  HandThumbUpIcon
 } from '@heroicons/react/24/outline';
 import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';

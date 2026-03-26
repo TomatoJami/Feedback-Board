@@ -72,13 +72,13 @@ export default function NewSuggestionPage() {
           ).catch(() => null)
         ]);
 
-        const currentSettings: any = settingsRecords.length > 0 ? { ...settingsRecords[0] } : {};
+        const currentSettings: Partial<Settings & { is_frozen?: boolean }> = settingsRecords.length > 0 ? { ...settingsRecords[0] } : {};
         if (workspaceRecord) {
           currentSettings.is_frozen = !!workspaceRecord.is_frozen;
         }
         
         if (settingsRecords.length > 0) {
-          setSettings(currentSettings);
+          setSettings(currentSettings as Settings & { is_frozen?: boolean });
         } else {
           // Fallback settings if not found
           const openStatus = await pb.collection('statuses').getFirstListItem(
@@ -89,7 +89,7 @@ export default function NewSuggestionPage() {
           setSettings({ 
             ...currentSettings,
             default_status: openStatus?.id || '' 
-          } as any);
+          } as Settings & { is_frozen?: boolean });
         }
       } catch (err) {
         logger.error('Failed to fetch initial data:', err);
