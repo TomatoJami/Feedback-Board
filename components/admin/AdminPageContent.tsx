@@ -2,6 +2,15 @@
 
 import React from 'react';
 
+import { 
+  ChartBarIcon,
+  ClipboardDocumentIcon, 
+  Cog6ToothIcon, 
+  ExclamationTriangleIcon,
+  LightBulbIcon,
+  UsersIcon
+} from '@heroicons/react/24/outline';
+
 import AdminHeader from '@/components/admin/AdminHeader';
 import AnalyticsTab from '@/components/admin/AnalyticsTab';
 import CategoryManagement from '@/components/admin/CategoryManagement';
@@ -113,12 +122,12 @@ export default function AdminPageContent() {
 
       <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', borderBottom: '1px solid var(--border-color)', padding: '0 8px' }}>
         {[
-          { id: 'general', name: 'Общие', icon: '⚙️' },
-          { id: 'board', name: 'Доска', icon: '📋' },
-          { id: 'members', name: 'Участники', icon: '👥' },
-          { id: 'suggestions', name: 'Предложения', icon: '💡' },
-          { id: 'analytics', name: 'Аналитика', icon: '📊' },
-          { id: 'danger', name: 'Опасная зона', icon: '⚠️' }
+          { id: 'general', name: 'Общие', icon: Cog6ToothIcon },
+          { id: 'board', name: 'Доска', icon: ClipboardDocumentIcon },
+          { id: 'members', name: 'Участники', icon: UsersIcon },
+          { id: 'suggestions', name: 'Предложения', icon: LightBulbIcon },
+          { id: 'analytics', name: 'Аналитика', icon: ChartBarIcon },
+          { id: 'danger', name: 'Опасная зона', icon: ExclamationTriangleIcon }
         ].filter(t => userRole === 'admin' || (t.id !== 'danger')).map(tab => (
           <button
             key={tab.id}
@@ -141,7 +150,7 @@ export default function AdminPageContent() {
               outline: 'none'
             }}
           >
-            <span>{tab.icon}</span>
+            <tab.icon className="w-5 h-5 flex-shrink-0" />
             {tab.name}
           </button>
         ))}

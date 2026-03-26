@@ -1,6 +1,14 @@
 'use client';
 
-import { BellAlertIcon, BellIcon } from '@heroicons/react/24/outline';
+import { 
+  ArrowsRightLeftIcon,
+  BellAlertIcon, 
+  BellIcon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentIcon,
+  HandThumbUpIcon,
+  LinkIcon 
+} from '@heroicons/react/24/outline';
 import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -99,18 +107,20 @@ export default function NotificationBell() {
               visibleNotifications.map((n) => {
                 const getIcon = () => {
                   switch(n.type) {
-                    case 'comment': return '💬';
-                    case 'vote': return '👍';
-                    case 'status': return '📋';
-                    case 'merge': return '🔗';
-                    default: return '🔔';
+                    case 'comment': return ChatBubbleLeftRightIcon;
+                    case 'vote': return HandThumbUpIcon;
+                    case 'status': return ClipboardDocumentIcon;
+                    case 'merge': return ArrowsRightLeftIcon;
+                    default: return BellIcon;
                   }
                 };
+
+                const Icon = getIcon();
 
                 const InnerContent = (
                   <>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{getIcon()}</span>
+                      <Icon className="w-5 h-5 text-indigo-400 mt-0.5" />
                       <div>
                         <p style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '4px' }}>{n.message}</p>
                         <time
