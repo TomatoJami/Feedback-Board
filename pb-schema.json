@@ -1054,7 +1054,7 @@
     "listRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
     "viewRule": "id != '' && (@request.auth.id = '' || @request.auth.status != 'blocked')",
     "createRule": "@request.auth.id != '' && user = @request.auth.id && @request.auth.status != 'blocked'",
-    "updateRule": "(user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
+    "updateRule": "(user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin' || (@request.body.text = text && @request.body.user = user && @request.body.suggestion = suggestion && @request.body.parent_id = parent_id)) && @request.auth.status != 'blocked'",
     "deleteRule": "@request.auth.id != '' && (user = @request.auth.id || suggestion.workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = suggestion.workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "comments",
     "type": "base",

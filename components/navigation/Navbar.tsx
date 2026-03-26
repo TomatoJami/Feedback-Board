@@ -52,7 +52,7 @@ export default function Navbar() {
               {workspaceId ? ( // Only show this button if we are in a workspace context
                 isFrozen ? (
                   user.role === 'admin' ? ( // Admins can still "suggest" even if frozen
-                    <Link href={`/w/${workspaceId}/suggest/new`} className="btn btn-primary" id="new-suggestion-btn">
+                    <Link href={`/w/${workspaceId}/suggestions/new`} className="btn btn-primary" id="new-suggestion-btn">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
                         <path d="M12 5v14M5 12h14" />
                       </svg>
@@ -67,7 +67,7 @@ export default function Navbar() {
                     </button>
                   )
                 ) : (
-                  <Link href={`/w/${workspaceId}/suggest/new`} className="btn btn-primary" id="new-suggestion-btn">
+                  <Link href={`/w/${workspaceId}/suggestions/new`} className="btn btn-primary" id="new-suggestion-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
                       <path d="M12 5v14M5 12h14" />
                     </svg>

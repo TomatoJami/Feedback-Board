@@ -66,17 +66,33 @@ export async function voteOnComment(
   existingType: 'upvote' | 'downvote' | null,
   newType: 'upvote' | 'downvote',
 ): Promise<void> {
+  // Fetch common comment data first to use in update (for security rules) and notifications
+  const comment = await pb.collection('comments').getOne(commentId, { 
+    expand: 'suggestion,suggestion.workspace_id',
+    requestKey: null
+  });
+
+  const updateData: any = {
+    text: comment.text,
+    user: comment.user,
+    suggestion: comment.suggestion,
+    parent_id: comment.parent_id || '',
+  };
+
   if (existingType) {
     // Change vote: find existing record and update
     const existing = await pb.collection('comment_votes').getFirstListItem(
       `user="${userId}" && comment="${commentId}"`,
+      { requestKey: null }
     );
     await pb.collection('comment_votes').update(existing.id, { type: newType });
 
     // Adjust counters
     const oldField = existingType === 'upvote' ? 'upvotes' : 'downvotes';
     const newField = newType === 'upvote' ? 'upvotes' : 'downvotes';
+    
     await pb.collection('comments').update(commentId, {
+      ...updateData,
       [`${oldField}-`]: 1,
       [`${newField}+`]: 1,
     });
@@ -89,10 +105,12 @@ export async function voteOnComment(
     });
 
     const field = newType === 'upvote' ? 'upvotes' : 'downvotes';
-    await pb.collection('comments').update(commentId, { [`${field}+`]: 1 });
+    await pb.collection('comments').update(commentId, { 
+      ...updateData,
+      [`${field}+`]: 1 
+    });
 
     try {
-      const comment = await pb.collection('comments').getOne(commentId, { expand: 'suggestion,suggestion.workspace_id' });
       const { createNotification } = await import('./notifications.helper');
       const suggestion = comment.expand?.suggestion;
       const workspaceSlug = suggestion?.expand?.workspace_id?.slug || suggestion?.workspace_id;
