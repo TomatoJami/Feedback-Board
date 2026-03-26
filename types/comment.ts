@@ -8,11 +8,14 @@ export interface SuggestionComment extends RecordModel {
   suggestion: string;
   text: string;
   parent_id?: string;
+  merged_from_suggestion?: string;
   upvotes?: number;
   downvotes?: number;
   expand?: {
     user?: User;
     workspace_id?: string;
+    suggestion?: any;
+    parent_id?: any;
   };
   workspace_id?: string;
 }

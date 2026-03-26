@@ -1,7 +1,7 @@
-import Image from 'next/image';
+import { ArrowsPointingInIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import React from 'react';
 
-import pb from '@/lib/pocketbase';
+import UserAvatar from '@/components/ui/UserAvatar';
 import type { Status,Suggestion, WorkspaceMember } from '@/types';
 
 import { CustomSelect } from './AdminUI';
@@ -12,6 +12,8 @@ interface SuggestionManagementProps {
   updatingId: string | null;
   onStatusChange: (id: string, newStatusId: string) => Promise<void>;
   onAssigneeChange: (id: string, userId: string | null) => Promise<void>;
+  onTogglePin: (id: string, pinned: boolean) => Promise<void>;
+  onMerge: (sourceId: string) => void;
   members: WorkspaceMember[];
 }
 
@@ -21,6 +23,8 @@ export default function SuggestionManagement({
   updatingId,
   onStatusChange,
   onAssigneeChange,
+  onTogglePin,
+  onMerge,
   members,
 }: SuggestionManagementProps) {
   return (
@@ -37,8 +41,10 @@ export default function SuggestionManagement({
               <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '35%' }}>Заголовок</th>
               <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '20%' }}>Автор</th>
               <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '10%' }}>Голоса</th>
+              <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '8%' }}>Пин</th>
               <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '15%' }}>Исполнитель</th>
-              <th style={{ padding: '14px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '20%' }}>Статус</th>
+              <th style={{ padding: '14px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '15%' }}>Статус</th>
+              <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em', width: '7%' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -53,36 +59,25 @@ export default function SuggestionManagement({
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <td style={{ padding: '14px 16px' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{s.title}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', opacity: s.merged_into ? 0.5 : 1 }}>
+                    {s.title}
+                    {s.merged_into && (
+                      <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 500, marginLeft: '8px', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px' }}>Объединено</span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '2px' }}>
                     {s.expand?.category_id?.icon} {s.expand?.category_id?.name || 'Без категории'}
                   </div>
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#d4d4d8' }}>
-                    <div style={{ 
-                      width: '24px', 
-                      height: '24px', 
-                      borderRadius: '50%', 
-                      background: 'rgba(255,255,255,0.1)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      fontSize: '0.65rem',
-                      overflow: 'hidden',
-                      flexShrink: 0
-                    }}>
-                      {s.expand?.author?.avatar ? (
-                        <Image 
-                          src={`${pb.baseUrl}/api/files/users/${s.expand.author.id}/${s.expand.author.avatar}`} 
-                          alt={s.expand.author.name || 'Author'} 
-                          width={24}
-                          height={24}
-                          unoptimized
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        />
-                      ) : (s.expand?.author?.name || 'A').charAt(0).toUpperCase()}
-                    </div>
+                    <UserAvatar 
+                      userId={s.author || ''} 
+                      userName={s.expand?.author?.name} 
+                      userEmail={s.expand?.author?.email} 
+                      userAvatar={s.expand?.author?.avatar} 
+                      size={24} 
+                    />
                     {s.expand?.author?.name || 'Аноним'}
                   </div>
                 </td>
@@ -100,6 +95,26 @@ export default function SuggestionManagement({
                   }}>
                     {s.votes_count || 0}
                   </span>
+                </td>
+                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                  <button
+                    onClick={() => onTogglePin(s.id, !s.pinned)}
+                    title={s.pinned ? 'Открепить' : 'Закрепить'}
+                    style={{
+                      background: s.pinned ? 'rgba(99,102,241,0.1)' : 'transparent',
+                      border: `1px solid ${s.pinned ? 'rgba(99,102,241,0.3)' : 'var(--border-color)'}`,
+                      borderRadius: '8px',
+                      padding: '6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: s.pinned ? '#6366f1' : '#71717a',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <MapPinIcon style={{ width: '16px', height: '16px' }} />
+                  </button>
                 </td>
                 <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                   <CustomSelect
@@ -126,6 +141,29 @@ export default function SuggestionManagement({
                     disabled={updatingId === s.id}
                     maxWidth="180px"
                   />
+                </td>
+                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                  {!s.merged_into && (
+                    <button
+                      onClick={() => onMerge(s.id)}
+                      title="Объединить"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '6px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#71717a',
+                        transition: 'all 0.15s ease',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <ArrowsPointingInIcon style={{ width: '16px', height: '16px' }} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

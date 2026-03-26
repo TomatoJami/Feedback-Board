@@ -1,6 +1,6 @@
 import React from 'react';
 
-import SuggestionSkeleton from '@/components/SuggestionSkeleton';
+import SuggestionSkeleton from '@/components/suggestions/SuggestionSkeleton';
 
 export default function Loading() {
   return (

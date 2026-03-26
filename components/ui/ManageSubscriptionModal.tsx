@@ -132,7 +132,7 @@ export default function ManageSubscriptionModal({ isOpen, onClose, plan }: Manag
           {/* Footer */}
           <div className="p-6 px-8 bg-black/40 border-t border-white/5 backdrop-blur-md">
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 bg-white/[0.03] px-5 py-2.5 rounded-full border border-white/5">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 bg-white/5 px-5 py-2.5 rounded-full border border-white/5">
                 <ShieldCheckIcon className="w-3.5 h-3.5 text-indigo-400" />
                 Безопасные платежи через Stripe
               </div>

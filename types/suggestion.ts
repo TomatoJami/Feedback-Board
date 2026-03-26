@@ -14,6 +14,9 @@ export interface Suggestion extends RecordModel {
   is_public: boolean;
   votes_count: number;
   status_id?: string;
+  pinned?: boolean;
+  merged_into?: string;
+  assigned_user?: string | null;
   workspace_id: string;
   expand?: {
     author?: User;

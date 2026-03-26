@@ -1182,6 +1182,20 @@
         "required": false,
         "system": false,
         "type": "relation"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "cmnt_merged_from",
+        "max": 500,
+        "min": 0,
+        "name": "merged_from_suggestion",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
       }
     ],
     "indexes": [
@@ -1269,6 +1283,37 @@
         "presentable": false,
         "system": true,
         "type": "autodate"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "notif_link_004",
+        "max": 500,
+        "min": 0,
+        "name": "link",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "notif_type_005",
+        "maxSelect": 1,
+        "name": "type",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "comment",
+          "vote",
+          "status",
+          "merge",
+          "system"
+        ]
       }
     ],
     "indexes": [],
@@ -1458,7 +1503,7 @@
     "id": "sgstns_coll_id",
     "listRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
     "viewRule": "(is_public = true || @request.auth.id != '') && (@request.auth.id = '' || @request.auth.status != 'blocked')",
-    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked'",
+    "createRule": "@request.auth.id != '' && @request.auth.status != 'blocked' && (workspace_id.is_frozen = false || @request.auth.role = 'admin' || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')))",
     "updateRule": "(author = @request.auth.id || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "deleteRule": "(author = @request.auth.id && (status_id.name = 'Open' || status_id = '') || workspace_id.owner = @request.auth.id || (@collection.workspace_members.workspace = workspace_id && @collection.workspace_members.user = @request.auth.id && (@collection.workspace_members.role = 'admin' || @collection.workspace_members.role = 'moderator')) || @request.auth.role = 'admin') && @request.auth.status != 'blocked'",
     "name": "suggestions",
@@ -1578,6 +1623,28 @@
         "minSelect": 0,
         "name": "status_id",
         "presentable": true,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "sgst_pinned_010",
+        "name": "pinned",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "sgstns_coll_id",
+        "hidden": false,
+        "id": "sgst_merged_011",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "merged_into",
+        "presentable": false,
         "required": false,
         "system": false,
         "type": "relation"
@@ -1956,8 +2023,17 @@
       },
       {
         "hidden": false,
-        "id": "bool_ws_private",
+        "id": "bool_is_private",
         "name": "isPrivate",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool_is_frozen",
+        "name": "is_frozen",
         "presentable": false,
         "required": false,
         "system": false,
@@ -1999,6 +2075,112 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX `idx_ws_slug` ON `workspaces` (`slug`)"
+    ],
+    "system": false
+  }
+  ,
+  {
+    "id": "pbc_logs_schema",
+    "listRule": "@request.auth.role = 'admin'",
+    "viewRule": "@request.auth.role = 'admin'",
+    "createRule": "",
+    "updateRule": null,
+    "deleteRule": "@request.auth.role = 'admin'",
+    "name": "logs",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "rel_user_id",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "user_id",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_error_msg",
+        "max": 0,
+        "min": 0,
+        "name": "error_message",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_stack_trace",
+        "max": 0,
+        "min": 0,
+        "name": "stack_trace",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "txt_path",
+        "max": 0,
+        "min": 0,
+        "name": "path",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_logs_created` ON `logs` (`created`)"
     ],
     "system": false
   }

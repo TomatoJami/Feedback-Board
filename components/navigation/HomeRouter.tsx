@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import Dashboard from '@/components/Dashboard';
+import Dashboard from '@/components/workspace/Dashboard';
 import { useAuth } from '@/hooks/useAuth';
 
 /**

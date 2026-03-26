@@ -1,11 +1,11 @@
 'use client';
 
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import GlobalHomeHeader from '@/components/GlobalHomeHeader';
-import WorkspaceFilterSection from '@/components/WorkspaceFilterSection';
-import WorkspaceList from '@/components/WorkspaceList';
+import GlobalHomeHeader from '@/components/workspace/GlobalHomeHeader';
+import WorkspaceFilterSection from '@/components/workspace/WorkspaceFilterSection';
+import WorkspaceList from '@/components/workspace/WorkspaceList';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types';
 
@@ -13,6 +13,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [filterType, setFilterType] = useState<'all' | 'mine' | 'invited'>('all');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <div className="w-full py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
@@ -41,17 +47,19 @@ export default function Dashboard() {
               />
             </div>
 
-            <WorkspaceFilterSection
-              filterType={filterType}
-              setFilterType={setFilterType}
-              user={user as User}
-            />
+            <div className="flex-shrink-0">
+              <WorkspaceFilterSection
+                filterType={filterType}
+                setFilterType={setFilterType}
+                user={user as User}
+              />
+            </div>
           </div>
         </GlobalHomeHeader>
 
         {/* Main Content Area */}
         <div className="mt-4">
-          <WorkspaceList filterType={filterType} search={search} />
+          <WorkspaceList filterType={filterType} search={debouncedSearch} />
         </div>
 
       </div>

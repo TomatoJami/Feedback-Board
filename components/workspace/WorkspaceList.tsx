@@ -3,7 +3,7 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import React, { useMemo } from 'react';
 
-import WorkspaceCard from '@/components/WorkspaceCard';
+import WorkspaceCard from '@/components/workspace/WorkspaceCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 

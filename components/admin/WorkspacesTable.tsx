@@ -2,7 +2,9 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
-import ConfirmModal from '@/components/ConfirmModal';
+import { CustomSelect } from '@/components/admin/AdminUI';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import UserAvatar from '@/components/ui/UserAvatar';
 import pb from '@/lib/pocketbase';
 import type { Workspace } from '@/types';
 
@@ -13,6 +15,7 @@ interface WorkspacesTableProps {
 
 export default function WorkspacesTable({ workspaces, setWorkspaces }: WorkspacesTableProps) {
     const [workspaceSearch, setWorkspaceSearch] = useState('');
+    const [privacyFilter, setPrivacyFilter] = useState<string>('all');
     const [workspacePage, setWorkspacePage] = useState(1);
     const WORKSPACES_PER_PAGE = 10;
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -40,35 +43,49 @@ export default function WorkspacesTable({ workspaces, setWorkspaces }: Workspace
     return (
         <section>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Воркспейсы</h2>
-                <div style={{ position: 'relative', width: '300px' }}>
-                    <input
-                        type="text"
-                        placeholder="Поиск по названию или slug..."
-                        value={workspaceSearch}
-                        onChange={(e) => {
-                            setWorkspaceSearch(e.target.value);
-                            setWorkspacePage(1);
-                        }}
-                        style={{
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '10px 16px 10px 40px',
-                            color: 'white',
-                            outline: 'none',
-                            fontSize: '0.9rem'
-                        }}
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, whiteSpace: 'nowrap' }}>Воркспейсы</h2>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: '250px' }}>
+                        <input
+                            type="text"
+                            placeholder="Поиск..."
+                            value={workspaceSearch}
+                            onChange={(e) => {
+                                setWorkspaceSearch(e.target.value);
+                                setWorkspacePage(1);
+                            }}
+                            style={{
+                                width: '100%',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '8px 12px 8px 36px',
+                                color: 'white',
+                                outline: 'none',
+                                fontSize: '0.85rem'
+                            }}
+                        />
+                        <svg
+                            className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+
+                    <CustomSelect
+                        options={[
+                            { id: 'all', name: 'Все типы' },
+                            { id: 'public', name: 'Public', color: '#10b981' },
+                            { id: 'private', name: 'Private', color: '#f59e0b' }
+                        ]}
+                        value={privacyFilter}
+                        onChange={(val) => { setPrivacyFilter(val); setWorkspacePage(1); }}
+                        placeholder="Доступ"
+                        variant="filter"
                     />
-                    <svg
-                        className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
                 </div>
             </div>
 
@@ -90,10 +107,14 @@ export default function WorkspacesTable({ workspaces, setWorkspaces }: Workspace
                         </thead>
                         <tbody>
                             {(() => {
-                                const filtered = workspaces.filter(w =>
-                                    w.name.toLowerCase().includes(workspaceSearch.toLowerCase()) ||
-                                    w.slug.toLowerCase().includes(workspaceSearch.toLowerCase())
-                                );
+                                const filtered = workspaces.filter(w => {
+                                    const matchesSearch = w.name.toLowerCase().includes(workspaceSearch.toLowerCase()) ||
+                                        w.slug.toLowerCase().includes(workspaceSearch.toLowerCase());
+                                    const matchesPrivacy = privacyFilter === 'all' || 
+                                        (privacyFilter === 'public' && !w.isPrivate) || 
+                                        (privacyFilter === 'private' && w.isPrivate);
+                                    return matchesSearch && matchesPrivacy;
+                                });
                                 const totalPages = Math.ceil(filtered.length / WORKSPACES_PER_PAGE);
                                 const currentWorkspaces = filtered.slice((workspacePage - 1) * WORKSPACES_PER_PAGE, workspacePage * WORKSPACES_PER_PAGE);
 
@@ -107,9 +128,13 @@ export default function WorkspacesTable({ workspaces, setWorkspaces }: Workspace
                                                 </td>
                                                 <td style={{ padding: '16px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>
-                                                            {(w.expand?.owner?.name || w.expand?.owner?.email || '?').charAt(0).toUpperCase()}
-                                                        </div>
+                                                        <UserAvatar 
+                                                            userId={w.owner} 
+                                                            userName={w.expand?.owner?.name} 
+                                                            userEmail={w.expand?.owner?.email} 
+                                                            userAvatar={w.expand?.owner?.avatar} 
+                                                            size={24} 
+                                                        />
                                                         <div style={{ fontSize: '0.9rem', color: '#e4e4e7' }}>{w.expand?.owner?.name || w.expand?.owner?.email || 'N/A'}</div>
                                                     </div>
                                                 </td>

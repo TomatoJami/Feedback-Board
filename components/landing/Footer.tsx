@@ -52,7 +52,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/[0.03] flex flex-col items-center gap-6">
+        <div className="pt-8 border-t border-white/5 flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-4 text-center">
             <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.3em] opacity-40">
               © {new Date().getFullYear()} TomatoJami & Valgur. All rights reserved.

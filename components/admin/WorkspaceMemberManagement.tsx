@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
-import ConfirmModal from '@/components/ConfirmModal';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import UserAvatar from '@/components/ui/UserAvatar';
 import pb from '@/lib/pocketbase';
 import type { User, UserPrefix, WorkspaceMember, WorkspaceRole } from '@/types';
 
@@ -217,32 +217,13 @@ export default function WorkspaceMemberManagement({
                     background: 'rgba(255, 255, 255, 0.02)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-color)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-primary)',
-                        overflow: 'hidden',
-                        fontWeight: 600
-                      }}>
-                        {member.expand?.user?.avatar ? (
-                          <Image 
-                            src={pb.files.getURL(member.expand.user, member.expand.user.avatar)} 
-                            alt={member.expand?.user?.name || 'User'} 
-                            width={40}
-                            height={40}
-                            unoptimized
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          />
-                        ) : (
-                          member.expand?.user?.name?.charAt(0).toUpperCase() || 'U'
-                        )}
-                      </div>
+                      <UserAvatar 
+                        userId={member.user} 
+                        userName={member.expand?.user?.name} 
+                        userEmail={member.expand?.user?.email} 
+                        userAvatar={member.expand?.user?.avatar} 
+                        size={40} 
+                      />
                       <div>
                         <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                           {member.expand?.user?.name || member.expand?.user?.email}

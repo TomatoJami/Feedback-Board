@@ -6,12 +6,15 @@ import { WorkspaceRole } from '@/types';
 
 export function useWorkspaceRole(workspaceId: string | undefined) {
   const [role, setRole] = useState<WorkspaceRole | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isFrozen, setIsFrozen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!workspaceId || !pb.authStore.isValid || !pb.authStore.record) {
       setRole(null);
+      setIsOwner(false);
       return;
     }
 
@@ -23,7 +26,9 @@ export function useWorkspaceRole(workspaceId: string | undefined) {
         const result = await fetchWorkspaceRole(pb.authStore.record!.id, workspaceId!);
         
         if (isMounted) {
-          setRole(result);
+          setRole(result.role);
+          setIsOwner(result.isOwner);
+          setIsFrozen(result.isFrozen || false);
           setError(null);
         }
       } catch (err: unknown) {
@@ -45,5 +50,5 @@ export function useWorkspaceRole(workspaceId: string | undefined) {
     };
   }, [workspaceId]);
 
-  return { role, isLoading, error };
+  return { role, isOwner, isFrozen, isLoading, error };
 }

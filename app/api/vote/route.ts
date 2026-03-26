@@ -69,6 +69,24 @@ export async function POST(request: Request) {
         type,
       });
 
+      // Send notification to author
+      try {
+        const suggestion = await adminPb.collection('suggestions').getOne(suggestionId, { expand: 'workspace_id' });
+        const workspaceSlug = suggestion.expand?.workspace_id?.slug || suggestion.workspace_id;
+        
+        const { createNotificationAdmin } = await import('@/lib/services/notifications.helper');
+        await createNotificationAdmin(
+          adminPb,
+          suggestion.author,
+          user.id,
+          `Кто-то проголосовал за ваше предложение: ${suggestion.title}`,
+          `/w/${workspaceSlug}/suggestions/${suggestionId}`,
+          'vote'
+        );
+      } catch (e) {
+        logger.error('Failed to notify author of vote', e);
+      }
+
       return NextResponse.json(newVote);
     }
 

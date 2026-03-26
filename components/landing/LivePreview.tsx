@@ -4,8 +4,8 @@ import { ChatBubbleLeftRightIcon, ChevronLeftIcon } from '@heroicons/react/24/ou
 import Link from 'next/link';
 import React from 'react';
 
-import CommentItem from '@/components/CommentItem';
-import SuggestionCard from '@/components/SuggestionCard';
+import CommentItem from '@/components/comments/CommentItem';
+import SuggestionCard from '@/components/suggestions/SuggestionCard';
 import { Suggestion, SuggestionComment } from '@/types';
 
 export default function LivePreview() {

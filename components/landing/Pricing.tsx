@@ -151,7 +151,7 @@ export default function Pricing({ showFree = true }: { showFree?: boolean }) {
         <div className={`flex justify-center relative z-30 mb-8`}>
           <div
             style={{ width: '230px', padding: '3px' }}
-            className="relative rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-xl flex items-center shadow-2xl overflow-hidden"
+            className="relative rounded-2xl bg-white/5 border border-white/5 backdrop-blur-xl flex items-center shadow-2xl overflow-hidden"
           >
             <div
               className="absolute inset-y-[3px] transition-all duration-300 ease-out bg-indigo-500/20 border border-indigo-500/30 rounded-xl"

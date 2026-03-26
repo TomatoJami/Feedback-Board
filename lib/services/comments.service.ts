@@ -40,13 +40,41 @@ export async function createComment(data: {
     workspace_id: data.workspaceId || null,
   });
 
-  // Try to fetch expanded version
+  // Try to fetch expanded version and notify
+  let expandedComment;
   try {
-    return await pb.collection('comments').getOne<SuggestionComment>(record.id, {
-      expand: 'user',
+    expandedComment = await pb.collection('comments').getOne<SuggestionComment>(record.id, {
+      expand: 'user,suggestion,suggestion.workspace_id,parent_id',
     });
-  } catch {
-    return record as unknown as SuggestionComment;
+
+    const { createNotification } = await import('./notifications.helper');
+    const suggestion = expandedComment.expand?.suggestion;
+    const workspaceSlug = suggestion?.expand?.workspace_id?.slug || suggestion?.workspace_id;
+    const link = `/w/${workspaceSlug}/suggestions/${suggestion?.id}`;
+    
+    if (suggestion && suggestion.author !== data.userId) {
+      await createNotification(
+        suggestion.author,
+        `Новый комментарий к вашему предложению: ${suggestion.title}`,
+        link,
+        'comment'
+      );
+    }
+
+    const parentComment = expandedComment.expand?.parent_id;
+    if (parentComment && parentComment.user !== data.userId && parentComment.user !== suggestion?.author) {
+      await createNotification(
+        parentComment.user,
+        `Новый ответ на ваш комментарий`,
+        link,
+        'comment'
+      );
+    }
+    
+    return expandedComment;
+  } catch (err) {
+    console.error('Failed to notify about comment', err);
+    return expandedComment || record as unknown as SuggestionComment;
   }
 }
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect,useState } from 'react';
 
-import PasswordField from '@/components/PasswordField';
+import PasswordField from '@/components/ui/PasswordField';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginForm() {

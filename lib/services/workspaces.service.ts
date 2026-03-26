@@ -23,25 +23,32 @@ export async function fetchUserMemberships(userId: string): Promise<string[]> {
 }
 
 /**
- * Fetch a user's role in a specific workspace.
- * Returns null if user is not a member.
+ * Fetch a user's role and ownership in a specific workspace.
  */
 export async function fetchWorkspaceRole(
   userId: string,
   workspaceId: string,
-): Promise<WorkspaceRole | null> {
+): Promise<{ role: WorkspaceRole | null; isOwner: boolean; isFrozen?: boolean }> {
   try {
-    const record = await pb.collection('workspace_members').getFirstListItem(
-      `user = "${userId}" && (workspace = "${workspaceId}" || workspace.slug = "${workspaceId}")`,
-      { requestKey: null },
-    );
-    return record.role as WorkspaceRole;
+    const [memberRecord, workspaceRecord] = await Promise.all([
+      pb.collection('workspace_members').getFirstListItem(
+        `user = "${userId}" && (workspace = "${workspaceId}" || workspace.slug = "${workspaceId}")`,
+        { requestKey: null },
+      ).catch(() => null),
+      pb.collection('workspaces').getFirstListItem(
+        `id = "${workspaceId}" || slug = "${workspaceId}"`,
+        { requestKey: null }
+      ).catch(() => null)
+    ]);
+
+    return {
+      role: (memberRecord?.role as WorkspaceRole) || null,
+      isOwner: workspaceRecord?.owner === userId,
+      isFrozen: !!workspaceRecord?.is_frozen
+    };
   } catch (err: unknown) {
-    const pbError = err as { status?: number };
-    if (pbError.status === 404) {
-      return null;
-    }
-    throw err;
+    console.error('Error fetching workspace role/owner:', err);
+    return { role: null, isOwner: false };
   }
 }
 

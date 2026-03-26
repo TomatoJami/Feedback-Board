@@ -4,23 +4,10 @@ import Image from 'next/image';
 import React, { useEffect,useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
-import PasswordField from '@/components/PasswordField';
+import PasswordField from '@/components/ui/PasswordField';
+import UserAvatar from '@/components/ui/UserAvatar';
 import pb from '@/lib/pocketbase';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
 import type { User } from '@/types';
-
-function getAvatarColor(id: string): string {
-  const colors = [
-    '#6366f1', '#a855f7', '#ec4899', '#f43f5e',
-    '#f97316', '#eab308', '#22c55e', '#14b8a6',
-    '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef',
-  ];
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
 
 interface ProfileSettingsFormProps {
     user: User;
@@ -109,11 +96,6 @@ export default function ProfileSettingsForm({ user }: ProfileSettingsFormProps) 
     }
   };
 
-  const avatarColor = getAvatarColor(user.id);
-  const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
-  const currentAvatarUrl = user.avatar
-    ? `${POCKETBASE_URL}/api/files/users/${user.id}/${user.avatar}`
-    : null;
 
   return (
     <div className="settings-card mb-8">
@@ -126,34 +108,35 @@ export default function ProfileSettingsForm({ user }: ProfileSettingsFormProps) 
             onClick={() => fileInputRef.current?.click()}
             className="settings-avatar-wrapper"
             style={{
-              width: '100px',
-              height: '100px',
-              borderRadius: '50%',
-              background: avatarColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '2.5rem',
-              fontWeight: 700,
               cursor: 'pointer',
-              border: '4px solid rgba(255,255,255,0.05)',
               transition: 'all 0.2s ease',
-              overflow: 'hidden',
               position: 'relative',
+              borderRadius: '50%',
             }}
             title="Нажмите, чтобы изменить аватар"
           >
-            {avatarPreview || currentAvatarUrl ? (
-                <Image
-                  src={avatarPreview || currentAvatarUrl!}
-                  alt={user.name || 'User Avatar'}
-                  width={100}
-                  height={100}
-                  unoptimized
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-            ) : initial}
+            <UserAvatar 
+              userId={user.id} 
+              userName={name} 
+              userEmail={email} 
+              userAvatar={user.avatar} 
+              size={100}
+              style={{
+                border: '4px solid rgba(255,255,255,0.05)',
+                fontSize: '2.5rem',
+              }}
+            >
+              {avatarPreview && (
+                 <Image
+                   src={avatarPreview}
+                   alt="Preview"
+                   width={100}
+                   height={100}
+                   unoptimized
+                   style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, borderRadius: '50%' }}
+                 />
+              )}
+            </UserAvatar>
 
             <div style={{
               position: 'absolute',
@@ -167,6 +150,9 @@ export default function ProfileSettingsForm({ user }: ProfileSettingsFormProps) 
               textAlign: 'center',
               opacity: 0,
               transition: 'opacity 0.2s ease',
+              borderBottomLeftRadius: '50px',
+              borderBottomRightRadius: '50px',
+              zIndex: 10
             }} className="avatar-hover-tip">
               ИЗМЕНИТЬ
             </div>

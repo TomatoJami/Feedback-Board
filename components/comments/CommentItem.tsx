@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import React, { useEffect,useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -7,11 +8,13 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
-import ConfirmModal from '@/components/ConfirmModal';
-import MarkdownEditor from '@/components/MarkdownEditor';
+import Badge from '@/components/ui/Badge';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
 import type { CommentPendingVote } from '@/hooks/useComments';
 import { logger } from '@/lib/logger';
 import { POCKETBASE_URL } from '@/lib/pocketbase';
+import { formatAbsoluteDate, timeAgo } from '@/lib/timeago';
 import { getAvatarColor } from '@/lib/utils';
 import type { SuggestionComment, User, UserPrefix } from '@/types';
 
@@ -32,6 +35,7 @@ interface CommentItemProps {
   workspaceId?: string;
   authorPrefixes?: UserPrefix[];
   isSuggestionAuthor?: boolean;
+  suggestionAuthorId?: string;
 }
 
 export default function CommentItem({ 
@@ -48,7 +52,8 @@ export default function CommentItem({
   isAdmin = false,
   workspaceId,
   authorPrefixes,
-  isSuggestionAuthor = false
+  isSuggestionAuthor = false,
+  suggestionAuthorId
 }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -84,7 +89,6 @@ export default function CommentItem({
   const cColor = getAvatarColor(comment.user || '');
   
   // Roles check for badges
-  const isCommentAuthor = user?.id === comment.user;
   const isCommentUserGlobalAdmin = cUser?.role === 'admin';
   
   // Can current user delete?
@@ -150,84 +154,85 @@ export default function CommentItem({
 
   return (
     <div className={`comment-group ${comment.parent_id ? 'is-reply' : ''}`}>
-      <div className={`comment-card ${isCommentAuthor ? 'is-author' : ''} ${isCommentUserGlobalAdmin ? 'is-admin' : ''}`}>
-        <div className="comment-header">
-          <div className="comment-user">
-            <div className="comment-avatar" style={{ 
-              background: cUser?.avatar ? 'transparent' : cColor,
-              overflow: 'hidden',
-              padding: 0
+      <div className={`comment-card ${isSuggestionAuthor ? 'is-author' : ''} ${isCommentUserGlobalAdmin ? 'is-admin' : ''}`}>
+        <div className="comment-header" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
+          {comment.merged_from_suggestion && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(245, 158, 11, 0.1)',
+              color: '#f59e0b',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              width: 'fit-content'
             }}>
-              {cUser?.avatar ? (
-                <Image 
-                  src={`${POCKETBASE_URL}/api/files/users/${cUser.id}/${cUser.avatar}`} 
-                  alt={cName} 
-                  width={32}
-                  height={32}
-                  unoptimized
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              ) : cName.charAt(0).toUpperCase()}
+              <ArrowsPointingInIcon style={{ width: '12px', height: '12px' }} />
+              Перенесено из: {comment.merged_from_suggestion}
             </div>
-            <span className="comment-name">{cName}</span>
-            {authorPrefixes && authorPrefixes.length > 0 && (
-              <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
-                {authorPrefixes.map((p) => (
-                  <span
-                    key={p.id}
-                    style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.02em',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      backgroundColor: `${p.color}15`,
-                      color: p.color,
-                      border: `1px solid ${p.color}30`
-                    }}
-                  >
-                    {p.name}
-                  </span>
-                ))}
-              </div>
-            )}
-            {isSuggestionAuthor && (
-              <span style={{ 
-                background: '#4f46e520', 
-                color: '#818cf8', 
-                padding: '2px 8px', 
-                borderRadius: '12px', 
-                fontSize: '0.65rem', 
-                fontWeight: 600, 
-                border: '1px solid #4f46e530',
-                marginLeft: '6px'
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+            <div className="comment-user">
+              <div className="comment-avatar" style={{ 
+                background: cUser?.avatar ? 'transparent' : cColor,
+                overflow: 'hidden',
+                padding: 0
               }}>
-                Автор
-              </span>
-            )}
-            {isCommentUserGlobalAdmin && <span className="detail-author-badge badge-admin">Админ</span>}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <time className="comment-date" dateTime={comment.created}>
-              {new Date(comment.created).toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </time>
-            {canDelete && (
-              <button 
-                onClick={() => setShowDeleteConfirm(true)}
-                className="comment-delete-btn"
-                title="Удалить комментарий"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
-                </svg>
-              </button>
-            )}
+                {cUser?.avatar ? (
+                  <Image 
+                    src={`${POCKETBASE_URL}/api/files/users/${cUser.id}/${cUser.avatar}`} 
+                    alt={cName} 
+                    width={32}
+                    height={32}
+                    unoptimized
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ) : cName.charAt(0).toUpperCase()}
+              </div>
+              <span className="comment-name">{cName}</span>
+              {authorPrefixes && authorPrefixes.length > 0 && (
+                <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
+                  {authorPrefixes.map((p) => (
+                    <span
+                      key={p.id}
+                      className="prefix-badge"
+                      style={{
+                        backgroundColor: `${p.color}15`,
+                        color: p.color,
+                        border: `1px solid ${p.color}30`
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isSuggestionAuthor && (
+                <Badge variant="indigo" size="sm" style={{ marginLeft: '6px' }}>Автор</Badge>
+              )}
+              {isCommentUserGlobalAdmin && (
+                <Badge variant="amber" size="sm" style={{ marginLeft: '6px' }}>Админ</Badge>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <time className="comment-date" dateTime={comment.created} title={formatAbsoluteDate(comment.created)}>
+                {timeAgo(comment.created)}
+              </time>
+              {canDelete && (
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="comment-delete-btn"
+                  title="Удалить комментарий"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
         
@@ -285,7 +290,7 @@ export default function CommentItem({
             <button 
               className={`c-vote-btn ${currentVote === 'upvote' ? 'voted-up' : ''}`}
               onClick={() => handleCommentVote('upvote')}
-              disabled={!user || user.id === comment.user}
+              disabled={!user || user?.id === comment.user}
               title={user?.id === comment.user ? 'Вы не можете голосовать за свой комментарий' : 'Нравится'}
               style={user?.id === comment.user ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
@@ -299,7 +304,7 @@ export default function CommentItem({
             <button 
               className={`c-vote-btn ${currentVote === 'downvote' ? 'voted-down' : ''}`}
               onClick={() => handleCommentVote('downvote')}
-              disabled={!user || user.id === comment.user}
+              disabled={!user || user?.id === comment.user}
               title={user?.id === comment.user ? 'Вы не можете голосовать за свой комментарий' : 'Не нравится'}
               style={user?.id === comment.user ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
@@ -409,6 +414,8 @@ export default function CommentItem({
               workspaceRole={workspaceRole}
               isAdmin={isAdmin}
               workspaceId={workspaceId}
+              suggestionAuthorId={suggestionAuthorId}
+              isSuggestionAuthor={reply.user === suggestionAuthorId}
             />
           ))}
         </div>

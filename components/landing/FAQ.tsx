@@ -6,8 +6,8 @@ function FAQItem({ question, answer, isOpen, onToggle }: { question: string, ans
   return (
     <div
       className={`group mb-4 rounded-3xl border transition-all duration-500 overflow-hidden ${isOpen
-          ? 'bg-white/[0.03] border-indigo-500/20 shadow-2xl shadow-indigo-500/5'
-          : 'bg-transparent border-white/[0.03] hover:border-white/10 hover:bg-white/[0.01]'
+          ? 'bg-white/5 border-indigo-500/20 shadow-2xl shadow-indigo-500/5'
+          : 'bg-transparent border-white/5 hover:border-white/10 hover:bg-white/5'
         }`}
     >
       <button
@@ -30,7 +30,7 @@ function FAQItem({ question, answer, isOpen, onToggle }: { question: string, ans
         className={`transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
           }`}
       >
-        <div className="border-t border-white/[0.03]" style={{ padding: '40px' }}>
+        <div className="border-t border-white/5" style={{ padding: '40px' }}>
           <p className="text-lg md:text-xl text-zinc-400 leading-relaxed max-w-3xl">
             {answer}
           </p>

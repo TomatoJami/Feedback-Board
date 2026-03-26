@@ -1,86 +1,44 @@
 'use client';
 
 import type { RecordSubscription } from 'pocketbase';
-import { useCallback, useEffect, useRef,useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import pb from '@/lib/pocketbase';
 import * as commentsService from '@/lib/services/comments.service';
-import { getUserCommentVotes, voteOnComment } from '@/lib/services/votes.service';
-import type { SuggestionComment, UserPrefix } from '@/types';
+import type { SuggestionComment } from '@/types';
 
-const CHANGE_WINDOW_MS = 15_000;
+import { useCommentVotes } from './useCommentVotes';
+import { useMemberPrefixes } from './useMemberPrefixes';
 
-export interface CommentPendingVote {
-  commentId: string;
-  type: 'upvote' | 'downvote';
-  remainingSeconds: number;
-}
+// Re-export for consumers
+export type { CommentPendingVote } from './useCommentVotes';
 
+/**
+ * Composed hook for comments: data loading, realtime, CRUD.
+ * Voting and prefixes are delegated to dedicated hooks.
+ */
 export function useComments(suggestionId: string, workspaceId?: string) {
   const [comments, setComments] = useState<SuggestionComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userVotes, setUserVotes] = useState<Record<string, 'upvote' | 'downvote' | null>>({});
-  const [memberPrefixes, setMemberPrefixes] = useState<Record<string, UserPrefix[]>>({});
-  const [pendingVotes, setPendingVotes] = useState<Record<string, CommentPendingVote>>({});
 
-  // Track locked votes (loaded from DB on mount, or timer expired)
-  const lockedVotesRef = useRef<Set<string>>(new Set());
-  const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { userVotes, pendingVotes, loadUserVotes, voteComment: rawVoteComment } = useCommentVotes(suggestionId);
+  const { memberPrefixes, loadPrefixes } = useMemberPrefixes();
 
   const fetchComments = useCallback(async () => {
     try {
-      // 1. Fetch comments
       const records = await commentsService.fetchComments(suggestionId);
       setComments(records);
-
-      // 2. Fetch current user's votes on these comments if logged in
-      if (pb.authStore.record) {
-        const voteMap = await getUserCommentVotes(pb.authStore.record.id, suggestionId);
-        // Mark all existing votes as locked
-        Object.keys(voteMap).forEach(commentId => lockedVotesRef.current.add(commentId));
-        setUserVotes(voteMap);
-      }
-
-      // 3. Fetch workspace members mapped to prefixes
-      if (workspaceId) {
-        const prefixMap = await commentsService.fetchMemberPrefixes(workspaceId);
-        setMemberPrefixes(prefixMap);
-      }
-
+      await loadUserVotes();
+      if (workspaceId) await loadPrefixes(workspaceId);
     } catch (err) {
       logger.error('Failed to fetch comments:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [suggestionId, workspaceId]);
+  }, [suggestionId, workspaceId, loadUserVotes, loadPrefixes]);
 
-  // Start countdown interval for pending votes
-  useEffect(() => {
-    const currentTimers = pendingTimersRef.current;
-    
-    countdownIntervalRef.current = setInterval(() => {
-      setPendingVotes(prev => {
-        const updated = { ...prev };
-        let changed = false;
-        for (const key of Object.keys(updated)) {
-          if (updated[key].remainingSeconds > 0) {
-            updated[key] = { ...updated[key], remainingSeconds: updated[key].remainingSeconds - 1 };
-            changed = true;
-          }
-        }
-        return changed ? updated : prev;
-      });
-    }, 1000);
-
-    return () => {
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      // Clear all pending timers on unmount
-      Object.values(currentTimers).forEach(clearTimeout);
-    };
-  }, []);
-
+  // Realtime subscription
   useEffect(() => {
     fetchComments();
 
@@ -112,58 +70,13 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     };
   }, [fetchComments, suggestionId]);
 
-  const startPendingTimer = useCallback((commentId: string, type: 'upvote' | 'downvote') => {
-    // Clear existing timer for this comment
-    if (pendingTimersRef.current[commentId]) {
-      clearTimeout(pendingTimersRef.current[commentId]);
+  // Wrapped voteComment that updates local comments state
+  const voteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
+    const updated = await rawVoteComment(commentId, type);
+    if (updated) {
+      setComments(prev => prev.map(c => c.id === commentId ? updated : c));
     }
-
-    // Add to pending votes
-    setPendingVotes(prev => ({
-      ...prev,
-      [commentId]: { commentId, type, remainingSeconds: 15 },
-    }));
-
-    // Set timer to lock vote after 15s
-    pendingTimersRef.current[commentId] = setTimeout(() => {
-      lockedVotesRef.current.add(commentId);
-      setPendingVotes(prev => {
-        const updated = { ...prev };
-        delete updated[commentId];
-        return updated;
-      });
-      delete pendingTimersRef.current[commentId];
-    }, CHANGE_WINDOW_MS);
-  }, []);
-
-  const handleVoteComment = useCallback(async (commentId: string, type: 'upvote' | 'downvote') => {
-    if (!pb.authStore.record) return;
-    const userId = pb.authStore.record.id;
-    const existingType = userVotes[commentId];
-
-    // Already voted same type → do nothing
-    if (existingType === type) return;
-
-    // Vote is locked → do nothing
-    if (lockedVotesRef.current.has(commentId) && existingType) {
-      return;
-    }
-
-    try {
-      await voteOnComment(userId, commentId, existingType || null, type);
-      
-      setUserVotes(prev => ({ ...prev, [commentId]: type }));
-      startPendingTimer(commentId, type);
-
-      // Refresh comment to get updated counts
-      try {
-        const updated = await commentsService.fetchComment(commentId);
-        setComments(prev => prev.map(c => c.id === commentId ? updated : c));
-      } catch (_err) { }
-    } catch (err: unknown) {
-      logger.error('Comment vote failed:', err);
-    }
-  }, [userVotes, startPendingTimer]);
+  }, [rawVoteComment]);
 
   const addComment = useCallback(async (userId: string, text: string, parentId?: string) => {
     const full = await commentsService.createComment({
@@ -177,7 +90,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     return full;
   }, [suggestionId, workspaceId]);
 
-  const handleUpdateComment = useCallback(async (id: string, text: string) => {
+  const updateComment = useCallback(async (id: string, text: string) => {
     try {
       const record = await commentsService.updateComment(id, text);
       setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
@@ -188,7 +101,7 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     }
   }, []);
 
-  const handleDeleteComment = useCallback(async (id: string) => {
+  const deleteComment = useCallback(async (id: string) => {
     try {
       await commentsService.deleteComment(id);
       setComments((prev) => prev.filter((c) => c.id !== id));
@@ -205,9 +118,9 @@ export function useComments(suggestionId: string, workspaceId?: string) {
     memberPrefixes,
     pendingVotes,
     addComment, 
-    voteComment: handleVoteComment, 
-    updateComment: handleUpdateComment,
-    deleteComment: handleDeleteComment,
+    voteComment,
+    updateComment,
+    deleteComment,
     refresh: fetchComments 
   };
 }

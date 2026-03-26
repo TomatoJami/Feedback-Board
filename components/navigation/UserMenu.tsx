@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import React, { useEffect,useRef, useState } from 'react';
 
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
-import { POCKETBASE_URL } from '@/lib/pocketbase';
-import { getAvatarColor } from '@/lib/utils';
 
 
 export default function UserMenu() {
@@ -26,30 +25,20 @@ export default function UserMenu() {
 
   if (!user) return null;
 
-  const color = getAvatarColor(user.id);
-  const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
-
   return (
     <div className="user-menu-wrapper" ref={menuRef}>
       <button
         className="user-avatar-btn"
         onClick={() => setOpen(!open)}
         style={{ 
-          background: user.avatar ? 'transparent' : color,
           padding: 0,
-          overflow: 'hidden'
+          border: 'none',
+          background: 'none'
         }}
         title={user.name || user.email}
         id="user-menu-btn"
       >
-        {user.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img 
-            src={`${POCKETBASE_URL}/api/files/users/${user.id}/${user.avatar}`} 
-            alt={user.name} 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-          />
-        ) : initial}
+        <UserAvatar userId={user.id} userName={user.name} userEmail={user.email} userAvatar={user.avatar} size={32} />
       </button>
 
       {open && (
@@ -71,20 +60,7 @@ export default function UserMenu() {
           )}
 
           <div className="user-dropdown-header">
-            <div className="user-dropdown-avatar" style={{ 
-              background: user.avatar ? 'transparent' : color,
-              padding: 0,
-              overflow: 'hidden'
-            }}>
-              {user.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={`${POCKETBASE_URL}/api/files/users/${user.id}/${user.avatar}`} 
-                  alt={user.name} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              ) : initial}
-            </div>
+            <UserAvatar userId={user.id} userName={user.name} userEmail={user.email} userAvatar={user.avatar} size={40} className="user-dropdown-avatar" />
             <div>
               <div className="user-dropdown-name">{user.name || 'Пользователь'}</div>
               <div className="user-dropdown-email">{user.email}</div>

@@ -1,23 +1,25 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import React, { Suspense, useMemo,useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import EmptyState from '@/components/EmptyState';
-import FilterSection from '@/components/FilterSection';
-import HomeHeader from '@/components/HomeHeader';
-import SuggestionCard from '@/components/SuggestionCard';
-import SuggestionSkeleton from '@/components/SuggestionSkeleton';
+import FilterSection from '@/components/suggestions/FilterSection';
+import SuggestionCard from '@/components/suggestions/SuggestionCard';
+import SuggestionSkeleton from '@/components/suggestions/SuggestionSkeleton';
+import EmptyState from '@/components/ui/EmptyState';
+import HomeHeader from '@/components/workspace/HomeHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { useRealtimeSuggestions } from '@/hooks/useRealtimeSuggestions';
 import { useStatuses } from '@/hooks/useStatuses';
+import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import pb from '@/lib/pocketbase';
 
 type CategoryFilter = 'All' | 'Mine' | string; // id of category
 type StatusFilter = 'All' | string; // id or standard value
 type SortSortSelection = 'votes' | 'newest' | 'oldest';
 
+const PAGE_SIZE = 20;
 
 function HomeContent() {
   const params = useParams();
@@ -33,22 +35,27 @@ function HomeContent() {
   const [status, setStatus] = useState<StatusFilter>('All');
   const [sortBy, setSortBy] = useState<SortSortSelection>('votes');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [userRole, setUserRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
+  const { role: workspaceRole, isOwner: isWorkspaceOwner, isFrozen } = useWorkspaceRole(workspaceId);
+
+  // Comment counts
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  // Infinite scroll
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   React.useEffect(() => {
     async function checkAccess() {
       try {
-        const ws = await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
-
-        if (user) {
-          const member = await pb.collection('workspace_members').getFirstListItem(
-            `workspace = "${ws.id}" && user = "${user.id}"`,
-            { requestKey: null }
-          ).catch(() => null);
-          if (member) setUserRole(member.role as 'admin' | 'moderator' | 'user');
-        }
-
+        await pb.collection('workspaces').getFirstListItem(`slug = "${workspaceId}"`, { requestKey: null });
         setCheckingAccess(false);
       } catch (__err: unknown) {
         if (!user) {
@@ -61,6 +68,27 @@ function HomeContent() {
     if (!authLoading) checkAccess();
   }, [workspaceId, user, authLoading, router]);
 
+  // Fetch comment counts
+  useEffect(() => {
+    if (suggestions.length === 0) return;
+    (async () => {
+      try {
+        const records = await pb.collection('comments').getFullList({
+          fields: 'suggestion',
+          filter: suggestions.map(s => `suggestion = "${s.id}"`).join(' || '),
+          requestKey: null,
+        });
+        const counts: Record<string, number> = {};
+        for (const r of records) {
+          counts[r.suggestion] = (counts[r.suggestion] || 0) + 1;
+        }
+        setCommentCounts(counts);
+      } catch (_err) {
+        // non-critical, skip
+      }
+    })();
+  }, [suggestions]);
+
   const filteredSuggestions = useMemo(() => {
     const result = suggestions.filter((s) => {
       const categoryMatch =
@@ -70,15 +98,15 @@ function HomeContent() {
       const suggestionEffectiveStatus = s.status_id || 'None';
       const statusMatch = status === 'All' || suggestionEffectiveStatus === status;
 
-      const searchMatch = !searchQuery ||
-        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const searchMatch = !debouncedSearch ||
+        s.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (s.description || '').toLowerCase().includes(debouncedSearch.toLowerCase());
 
       return categoryMatch && statusMatch && searchMatch;
     });
 
     // Sorting
-    return result.sort((a, b) => {
+    const sorted = result.sort((a, b) => {
       if (sortBy === 'votes') {
         const scoreA = (a.votes_count || 0);
         const scoreB = (b.votes_count || 0);
@@ -93,7 +121,42 @@ function HomeContent() {
       }
       return 0;
     });
-  }, [suggestions, categoryId, status, user, sortBy, searchQuery]);
+
+    // Pinned always on top
+    const pinned = sorted.filter(s => s.pinned);
+    const unpinned = sorted.filter(s => !s.pinned);
+    return [...pinned, ...unpinned];
+  }, [suggestions, categoryId, status, user, sortBy, debouncedSearch]);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [categoryId, status, sortBy, debouncedSearch]);
+
+  // Infinite scroll observer
+  const loadMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredSuggestions.length));
+  }, [filteredSuggestions.length]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const visibleSuggestions = filteredSuggestions.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredSuggestions.length;
 
   const isMine = categoryId === 'Mine';
   const isLoading = suggestionsLoading || categoriesLoading || statusesLoading || checkingAccess;
@@ -114,8 +177,38 @@ function HomeContent() {
 
   return (
     <div className="w-full flex flex-col gap-12">
+      {isFrozen && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid #ef4444',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '50%', 
+            background: '#ef4444', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0110 0v4"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#fca5a5' }}>Пространство заморожено</h3>
+            <p style={{ fontSize: '0.9rem', color: '#fecaca' }}>Новые предложения временно не принимаются. Вы можете просматривать и голосовать за существующие.</p>
+          </div>
+        </div>
+      )}
       <HomeHeader isMine={isMine} />
-
       <FilterSection
         categoryId={categoryId}
         setCategoryId={setCategoryId}
@@ -134,15 +227,24 @@ function HomeContent() {
         {filteredSuggestions.length === 0 ? (
           <EmptyState
             isMine={isMine}
-            isAdmin={userRole === 'admin' || user?.role === 'admin'}
+            isAdmin={isWorkspaceOwner || workspaceRole === 'admin'}
             workspaceSlug={workspaceId}
           />
         ) : (
-          filteredSuggestions.map((suggestion, index) => (
-            <div key={suggestion.id} style={{ animation: `fadeIn 0.3s ease-out ${index * 0.05}s both` }}>
-              <SuggestionCard suggestion={suggestion} workspaceSlug={workspaceId} />
-            </div>
-          ))
+          <>
+            {visibleSuggestions.map((suggestion, index) => (
+              <div key={suggestion.id} style={{ animation: `fadeIn 0.3s ease-out ${index * 0.05}s both` }}>
+                <SuggestionCard
+                  suggestion={suggestion}
+                  workspaceSlug={workspaceId}
+                  commentsCount={commentCounts[suggestion.id]}
+                />
+              </div>
+            ))}
+            {hasMore && (
+              <div ref={sentinelRef} style={{ height: '1px' }} />
+            )}
+          </>
         )}
       </div>
     </div>

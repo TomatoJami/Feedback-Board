@@ -90,5 +90,21 @@ export async function voteOnComment(
 
     const field = newType === 'upvote' ? 'upvotes' : 'downvotes';
     await pb.collection('comments').update(commentId, { [`${field}+`]: 1 });
+
+    try {
+      const comment = await pb.collection('comments').getOne(commentId, { expand: 'suggestion,suggestion.workspace_id' });
+      const { createNotification } = await import('./notifications.helper');
+      const suggestion = comment.expand?.suggestion;
+      const workspaceSlug = suggestion?.expand?.workspace_id?.slug || suggestion?.workspace_id;
+      
+      await createNotification(
+        comment.user,
+        `Кто-то оценил ваш комментарий: "${comment.text.substring(0, 30)}${comment.text.length > 30 ? '...' : ''}"`,
+        `/w/${workspaceSlug}/suggestions/${suggestion?.id}`,
+        'vote'
+      );
+    } catch (e) {
+      console.error('Failed to notify comment author', e);
+    }
   }
 }

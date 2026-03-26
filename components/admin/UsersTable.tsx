@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { CustomSelect } from '@/components/admin/AdminUI';
+import UserAvatar from '@/components/ui/UserAvatar';
 import pb from '@/lib/pocketbase';
 import type { User } from '@/types';
 
@@ -14,6 +14,8 @@ interface UsersTableProps {
 
 export default function UsersTable({ users, setUsers, currentUser }: UsersTableProps) {
     const [userSearch, setUserSearch] = useState('');
+    const [planFilter, setPlanFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [userPage, setUserPage] = useState(1);
     const USERS_PER_PAGE = 10;
     const [isUpdatingUser, setIsUpdatingUser] = useState<string | null>(null);
@@ -64,35 +66,61 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
     return (
         <section style={{ marginBottom: '60px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Пользователи</h2>
-                <div style={{ position: 'relative', width: '300px' }}>
-                    <input
-                        type="text"
-                        placeholder="Поиск по имени или email..."
-                        value={userSearch}
-                        onChange={(e) => {
-                            setUserSearch(e.target.value);
-                            setUserPage(1);
-                        }}
-                        style={{
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '10px 16px 10px 40px',
-                            color: 'white',
-                            outline: 'none',
-                            fontSize: '0.9rem'
-                        }}
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, whiteSpace: 'nowrap' }}>Пользователи</h2>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: '250px' }}>
+                        <input
+                            type="text"
+                            placeholder="Поиск..."
+                            value={userSearch}
+                            onChange={(e) => {
+                                setUserSearch(e.target.value);
+                                setUserPage(1);
+                            }}
+                            style={{
+                                width: '100%',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '8px 12px 8px 36px',
+                                color: 'white',
+                                outline: 'none',
+                                fontSize: '0.85rem'
+                            }}
+                        />
+                        <svg
+                            className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+
+                    <CustomSelect
+                        options={[
+                            { id: 'all', name: 'Все тарифы' },
+                            { id: 'free', name: 'Free', color: '#a1a1aa' },
+                            { id: 'pro', name: 'Pro', color: '#fbbf24' }
+                        ]}
+                        value={planFilter}
+                        onChange={(val) => { setPlanFilter(val); setUserPage(1); }}
+                        placeholder="Тариф"
+                        variant="filter"
                     />
-                    <svg
-                        className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+
+                    <CustomSelect
+                        options={[
+                            { id: 'all', name: 'Все статусы' },
+                            { id: 'active', name: 'Активен', color: '#10b981' },
+                            { id: 'blocked', name: 'Заблокирован', color: '#ef4444' }
+                        ]}
+                        value={statusFilter}
+                        onChange={(val) => { setStatusFilter(val); setUserPage(1); }}
+                        placeholder="Статус"
+                        variant="filter"
+                    />
                 </div>
             </div>
 
@@ -114,10 +142,13 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
                         </thead>
                         <tbody>
                             {(() => {
-                                const filtered = users.filter(u =>
-                                    (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
-                                    u.email.toLowerCase().includes(userSearch.toLowerCase())
-                                );
+                                const filtered = users.filter(u => {
+                                    const matchesSearch = (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+                                        u.email.toLowerCase().includes(userSearch.toLowerCase());
+                                    const matchesPlan = planFilter === 'all' || u.plan === planFilter;
+                                    const matchesStatus = statusFilter === 'all' || u.status === statusFilter;
+                                    return matchesSearch && matchesPlan && matchesStatus;
+                                });
                                 const totalPages = Math.ceil(filtered.length / USERS_PER_PAGE);
                                 const currentUsers = filtered.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
@@ -127,18 +158,13 @@ export default function UsersTable({ users, setUsers, currentUser }: UsersTableP
                                             <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                 <td style={{ padding: '16px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, overflow: 'hidden' }}>
-                                                            {u.avatar ? (
-                                                                <Image 
-                                                                    src={`${pb.baseUrl}/api/files/users/${u.id}/${u.avatar}`} 
-                                                                    alt={u.name || 'User Avatar'} 
-                                                                    width={40}
-                                                                    height={40}
-                                                                    unoptimized
-                                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                                                />
-                                                            ) : (u.name || u.email || '?').charAt(0).toUpperCase()}
-                                                        </div>
+                                                        <UserAvatar
+                                                            userId={u.id}
+                                                            userName={u.name}
+                                                            userEmail={u.email}
+                                                            userAvatar={u.avatar}
+                                                            size={40}
+                                                        />
                                                         <div style={{ minWidth: 0 }}>
                                                             <div style={{ fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name || 'Без имени'}</div>
                                                             <div style={{ fontSize: '0.8rem', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>

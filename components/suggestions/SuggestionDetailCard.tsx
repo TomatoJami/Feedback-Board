@@ -1,9 +1,11 @@
+import { MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
 import AuthorBadge from '@/components/suggestions/AuthorBadge';
 import Badge from '@/components/ui/Badge';
+import { formatAbsoluteDate, timeAgo } from '@/lib/timeago';
 import type { Suggestion, User, UserPrefix } from '@/types';
 
 interface SuggestionDetailCardProps {
@@ -27,6 +29,10 @@ interface SuggestionDetailCardProps {
   onShowDelete: () => void;
   showDeleteBtn: boolean;
   authorPrefixes?: UserPrefix[];
+  onEdit?: () => void;
+  showEditBtn?: boolean;
+  onTogglePin?: () => void;
+  showPinBtn?: boolean;
 }
 
 export default function SuggestionDetailCard({
@@ -50,13 +56,22 @@ export default function SuggestionDetailCard({
   onShowDelete,
   showDeleteBtn,
   authorPrefixes,
+  onEdit,
+  showEditBtn,
+  onTogglePin,
+  showPinBtn,
 }: SuggestionDetailCardProps) {
   return (
     <div className="detail-card">
       {/* Title, Category, and Status at top */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <h1 className="detail-title" style={{ margin: 0, lineHeight: 1.2 }}>{suggestion.title}</h1>
+      <div className="detail-header-row">
+        <div className="detail-title-group">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {suggestion.pinned && (
+              <MapPinIcon style={{ width: '20px', height: '20px', color: '#6366f1', flexShrink: 0 }} />
+            )}
+            <h1 className="detail-title" style={{ margin: 0, lineHeight: 1.2 }}>{suggestion.title}</h1>
+          </div>
           <Badge variant="zinc" size="md">
             {categoryIcon} {categoryName}
           </Badge>
@@ -88,13 +103,8 @@ export default function SuggestionDetailCard({
             {authorPrefixes.map((p) => (
               <span
                 key={p.id}
+                className="prefix-badge"
                 style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
                   backgroundColor: `${p.color}15`,
                   color: p.color,
                   border: `1px solid ${p.color}30`
@@ -109,13 +119,14 @@ export default function SuggestionDetailCard({
           <Badge variant="amber" size="sm" className="ml-1">Админ</Badge>
         )}
         <Badge variant="indigo" size="sm" className="ml-1">Автор</Badge>
-        <time className="card-date" style={{ marginLeft: 'auto' }} dateTime={suggestion.created}>
-          {new Date(suggestion.created).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
+        <time className="card-date" style={{ marginLeft: 'auto' }} dateTime={suggestion.created} title={formatAbsoluteDate(suggestion.created)}>
+          {timeAgo(suggestion.created)}
         </time>
+        {suggestion.created !== suggestion.updated && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6 }} title={`Изменено: ${formatAbsoluteDate(suggestion.updated)}`}>
+            (ред.)
+          </span>
+        )}
       </div>
 
       {suggestion.description && (
@@ -148,7 +159,7 @@ export default function SuggestionDetailCard({
       )}
 
       {/* Vote block */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="detail-vote-row">
         <div className="vote-column" style={{ flexDirection: 'row', gap: '8px' }}>
           <button
             className={`vote-btn ${voteType === 'upvote' ? 'voted' : ''}`}
@@ -208,9 +219,8 @@ export default function SuggestionDetailCard({
 
         {showDeleteBtn && (
           <button 
-            className="detail-delete-btn"
+            className="danger-btn"
             onClick={onShowDelete}
-            style={{ marginLeft: 'auto', color: '#f43f5e', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="trash-icon">
               <g className="trash-lid">
@@ -222,6 +232,26 @@ export default function SuggestionDetailCard({
               <path d="M14 11v6" />
             </svg>
             Удалить
+          </button>
+        )}
+        {showEditBtn && onEdit && (
+          <button 
+            className="btn btn-ghost"
+            onClick={onEdit}
+            style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+          >
+            <PencilIcon style={{ width: '16px', height: '16px' }} />
+            Редактировать
+          </button>
+        )}
+        {showPinBtn && onTogglePin && (
+          <button
+            className="btn btn-ghost"
+            onClick={onTogglePin}
+            style={{ fontSize: '0.85rem', padding: '8px 16px', color: suggestion.pinned ? '#6366f1' : undefined }}
+          >
+            <MapPinIcon style={{ width: '16px', height: '16px' }} />
+            {suggestion.pinned ? 'Открепить' : 'Закрепить'}
           </button>
         )}
       </div>

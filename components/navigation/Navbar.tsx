@@ -11,11 +11,12 @@ import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
 export default function Navbar() {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const params = useParams();
   const workspaceId = params?.workspaceId as string | undefined;
-  const { role: workspaceRole } = useWorkspaceRole(workspaceId);
-  const canManageWorkspace = isAdmin || workspaceRole === 'admin';
+  const { role, isOwner, isFrozen } = useWorkspaceRole(workspaceId);
+
+  const canManageWorkspace = isOwner || role === 'admin' || role === 'moderator';
 
   return (
     <nav className="navbar" id="main-nav">
@@ -39,19 +40,55 @@ export default function Navbar() {
             <div className="navbar-skeleton" />
           ) : user ? (
             <>
-              {workspaceId ? (
-                <Link href={`/w/${workspaceId}/suggestions/new`} className="btn btn-primary" id="new-suggestion-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Предложить
-                </Link>
-              ) : (
+              {/* This button is for creating a new workspace, not a suggestion.
+                  The instruction implies it's a suggestion button, so I'm adapting it
+                  to be conditional based on workspaceId and frozen state, assuming
+                  it's meant to be a "create suggestion" button for the current workspace.
+                  If it's truly for creating a *new workspace*, the isFrozen logic
+                  would not apply here. I'm following the instruction's intent for a "suggestion button".
+                  The href is kept as /create-workspace as per the original code,
+                  but the text and disabled state are modified.
+              */}
+              {workspaceId ? ( // Only show this button if we are in a workspace context
+                isFrozen ? (
+                  user.role === 'admin' ? ( // Admins can still "suggest" even if frozen
+                    <Link href={`/w/${workspaceId}/suggest/new`} className="btn btn-primary" id="new-suggestion-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Предложить (Заморожено)
+                    </Link>
+                  ) : (
+                    <button className="btn btn-primary" disabled id="frozen-suggestion-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Заморожено
+                    </button>
+                  )
+                ) : (
+                  <Link href={`/w/${workspaceId}/suggest/new`} className="btn btn-primary" id="new-suggestion-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Новое
+                  </Link>
+                )
+              ) : ( // If not in a workspace, show the original "create workspace" button
                 <Link href="/create-workspace" className="btn btn-primary" id="new-workspace-btn">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                   Новое
+                </Link>
+              )}
+
+              {canManageWorkspace && workspaceId && (
+                <Link href={`/w/${workspaceId}/roadmap`} className="btn btn-ghost">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon">
+                    <path d="M9 20l-5.447-2.724A2 2 0 013 15.483V5.517a2 2 0 011.053-1.758L9 1m0 19l6-3m-6 3V1m6 19l5.447 2.724A2 2 0 0021 21.483V11.517a2 2 0 00-1.053-1.758L15 7m-6 13V7m6 13V7" />
+                  </svg>
+                  Roadmap
                 </Link>
               )}
 

@@ -1,3 +1,4 @@
+import { Squares2X2Icon, UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
 import React from 'react';
 
 import type { User } from '@/types';
@@ -19,7 +20,7 @@ export default function WorkspaceFilterSection({
         className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
         onClick={() => setFilterType('all')}
       >
-        Все
+        <Squares2X2Icon className="w-[14px] h-[14px]" /> Все
       </button>
       {user && (
         <React.Fragment>
@@ -27,13 +28,13 @@ export default function WorkspaceFilterSection({
             className={`filter-chip ${filterType === 'mine' ? 'active' : ''}`}
             onClick={() => setFilterType('mine')}
           >
-            📝 Мои
+            <UserIcon className="w-[14px] h-[14px]" /> Мои
           </button>
           <button
             className={`filter-chip ${filterType === 'invited' ? 'active' : ''}`}
             onClick={() => setFilterType('invited')}
           >
-            🤝 Приглашен
+            <UserGroupIcon className="w-[14px] h-[14px]" /> Приглашен
           </button>
         </React.Fragment>
       )}
